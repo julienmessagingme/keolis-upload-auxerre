@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enquêtes Qualité - Plateforme Keolis Auxerre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'keolis-blue': '#005596',
+                        'keolis-light': '#0072CE',
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gradient-to-br from-keolis-blue to-keolis-light min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-keolis-blue shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white rounded-lg p-1.5 flex items-center justify-center">
+                        <img src="https://f003.backblazeb2.com/file/auxerre/Capture+d'%C3%A9cran+2026-02-04+171543.png" alt="Messaging Me" class="w-full h-full object-contain">
+                    </div>
+                    <span class="text-white text-xl font-bold">Plateforme Keolis Auxerre</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="/" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">
+                        News
+                    </a>
+                    <a href="/index.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">
+                        Fiches Horaires
+                    </a>
+                    <a href="/knowledge.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">
+                        Base de Connaissances
+                    </a>
+                    <a href="/surveys.html" class="text-white bg-white bg-opacity-20 px-4 py-2 rounded-lg font-semibold hover:bg-opacity-30 transition-all flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                        </svg>
+                        Enquêtes Qualité
+                    </a>
+                    <a href="/admin.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        Administration
+                    </a>
+                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        Déconnexion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+
+        <!-- Filter Bar -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- Period Buttons -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-600 mr-1">Période :</span>
+                    <button id="period-7" class="period-btn bg-keolis-blue text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('7')">7j</button>
+                    <button id="period-30" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('30')">30j</button>
+                    <button id="period-90" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('90')">90j</button>
+                    <button id="period-custom" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('custom')">Personnalisé</button>
+                </div>
+
+                <!-- Custom Date Inputs -->
+                <div id="customDates" class="hidden flex items-center gap-2">
+                    <label class="text-sm text-gray-600">Du</label>
+                    <input type="date" id="dateStart" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-keolis-blue" onchange="applyCustomDates()">
+                    <label class="text-sm text-gray-600">Au</label>
+                    <input type="date" id="dateEnd" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-keolis-blue" onchange="applyCustomDates()">
+                </div>
+
+                <!-- Separator -->
+                <div class="hidden md:block w-px h-8 bg-gray-300"></div>
+
+                <!-- Star Filters -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-600 mr-1">Filtrer :</span>
+                    <button id="rating-1" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="toggleRating(1)">&#9733;1</button>
+                    <button id="rating-2" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="toggleRating(2)">&#9733;2</button>
+                    <button id="rating-3" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="toggleRating(3)">&#9733;3</button>
+                    <button id="rating-4" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="toggleRating(4)">&#9733;4</button>
+                    <button id="rating-5" class="bg-gray-100 text-gray-700 hover:bg-gray-200 px-3 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="toggleRating(5)">&#9733;5</button>
+                </div>
+
+                <!-- Spacer -->
+                <div class="flex-1"></div>
+
+                <!-- Export CSV -->
+                <button onclick="exportCSV()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Card 1: Note Moyenne -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
+                <div id="statAverage" class="text-4xl font-bold text-gray-400">—</div>
+                <div id="statAverageStars" class="mt-2 flex justify-center gap-0.5">
+                    <svg class="w-5 h-5 text-gray-300 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-5 h-5 text-gray-300 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-5 h-5 text-gray-300 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-5 h-5 text-gray-300 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg class="w-5 h-5 text-gray-300 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Note moyenne</p>
+            </div>
+
+            <!-- Card 2: Total Réponses -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
+                <div id="statTotal" class="text-4xl font-bold text-keolis-blue">0</div>
+                <div class="mt-2 flex justify-center">
+                    <svg class="w-8 h-8 text-keolis-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Réponses reçues</p>
+            </div>
+
+            <!-- Card 3: Satisfaits -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
+                <div id="statSatisfied" class="text-4xl font-bold text-green-600">0%</div>
+                <div class="mt-3 w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="barSatisfied" class="bg-green-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Satisfaits (4-5&#9733;)</p>
+            </div>
+
+            <!-- Card 4: Insatisfaits -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 text-center">
+                <div id="statDissatisfied" class="text-4xl font-bold text-red-600">0%</div>
+                <div class="mt-3 w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="barDissatisfied" class="bg-red-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Insatisfaits (1-2&#9733;)</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Distribution Chart -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-keolis-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Répartition des notes
+                </h2>
+                <div class="h-64">
+                    <canvas id="distributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Evolution Chart -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-keolis-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    Évolution de la note moyenne
+                </h2>
+                <div class="h-64">
+                    <canvas id="evolutionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden mb-6">
+            <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+                <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                </svg>
+                <p class="text-gray-500 text-lg">Aucune enquête de satisfaction reçue pour cette période</p>
+            </div>
+        </div>
+
+        <!-- Responses Table -->
+        <div id="tableSection" class="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <!-- Table Header -->
+            <div class="bg-keolis-blue text-white px-6 py-4 flex items-center justify-between">
+                <h2 class="text-lg font-bold flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    Dernières réponses
+                </h2>
+                <span id="totalBadge" class="bg-white bg-opacity-20 text-white text-sm px-3 py-1 rounded-full font-semibold">0 résultat</span>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Note</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Téléphone</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody id="surveysTableBody">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <button id="btnPrev" onclick="changePage(-1)" disabled class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    Précédent
+                </button>
+                <span id="pageInfo" class="text-sm text-gray-600">Page 1 sur 1 (0 résultats)</span>
+                <button id="btnNext" onclick="changePage(1)" disabled class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    Suivant
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State
+        let currentPeriod = '7';
+        let customStartDate = null;
+        let customEndDate = null;
+        let selectedRatings = [];
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 50;
+
+        // Chart instances
+        let distributionChart = null;
+        let evolutionChart = null;
+
+        // === Date Helpers ===
+        function getDateRange() {
+            const now = new Date();
+            let startDate, endDate;
+
+            if (currentPeriod === 'custom') {
+                startDate = customStartDate;
+                endDate = customEndDate;
+            } else {
+                const days = parseInt(currentPeriod);
+                startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+                endDate = now.toISOString();
+            }
+
+            return { startDate, endDate };
+        }
+
+        function buildQueryParams(extra = {}) {
+            const { startDate, endDate } = getDateRange();
+            const params = new URLSearchParams();
+            if (startDate) params.set('startDate', startDate);
+            if (endDate) params.set('endDate', endDate);
+            if (selectedRatings.length > 0) params.set('ratings', selectedRatings.join(','));
+            for (const [k, v] of Object.entries(extra)) params.set(k, v);
+            return params.toString();
+        }
+
+        // === API Calls ===
+        async function loadStats() {
+            try {
+                const res = await fetch(`/api/surveys/stats?${buildQueryParams()}`);
+                const data = await res.json();
+                if (data.success) {
+                    updateStatCards(data);
+                    updateCharts(data);
+                }
+            } catch (err) {
+                console.error('Erreur chargement stats:', err);
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const res = await fetch(`/api/surveys/history?${buildQueryParams({ page: currentPage, limit: ITEMS_PER_PAGE })}`);
+                const data = await res.json();
+                if (data.success) {
+                    updateTable(data);
+                }
+            } catch (err) {
+                console.error('Erreur chargement historique:', err);
+            }
+        }
+
+        async function loadAll() {
+            await Promise.all([loadStats(), loadHistory()]);
+        }
+
+        // === UI Update Functions ===
+        function updateStatCards(data) {
+            // Update average card
+            const avgEl = document.getElementById('statAverage');
+            avgEl.textContent = data.average != null ? data.average : '—';
+            avgEl.className = 'text-4xl font-bold ' + (
+                data.average == null ? 'text-gray-400' :
+                data.average >= 3.5 ? 'text-green-600' :
+                data.average >= 2.5 ? 'text-orange-500' : 'text-red-600'
+            );
+            document.getElementById('statAverageStars').innerHTML = renderStars(data.average || 0);
+
+            // Update total card
+            document.getElementById('statTotal').textContent = data.total || 0;
+
+            // Update satisfied card
+            const satisfiedPct = data.satisfiedPercent != null ? data.satisfiedPercent : 0;
+            document.getElementById('statSatisfied').textContent = satisfiedPct + '%';
+            document.getElementById('barSatisfied').style.width = satisfiedPct + '%';
+
+            // Update dissatisfied card
+            const dissatisfiedPct = data.dissatisfiedPercent != null ? data.dissatisfiedPercent : 0;
+            document.getElementById('statDissatisfied').textContent = dissatisfiedPct + '%';
+            document.getElementById('barDissatisfied').style.width = dissatisfiedPct + '%';
+        }
+
+        function renderStars(rating) {
+            const rounded = Math.round(rating);
+            let html = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rounded) {
+                    html += '<svg class="w-5 h-5 text-yellow-400 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+                } else {
+                    html += '<svg class="w-5 h-5 text-gray-300 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>';
+                }
+            }
+            return html;
+        }
+
+        function updateCharts(data) {
+            // Distribution chart
+            const distLabels = ['1 \u2605', '2 \u2605', '3 \u2605', '4 \u2605', '5 \u2605'];
+            const distColors = ['#EF4444', '#F97316', '#EAB308', '#84CC16', '#22C55E'];
+            const distData = [0, 0, 0, 0, 0];
+            if (data.distribution) {
+                data.distribution.forEach(d => { distData[d.rating - 1] = d.count; });
+            }
+
+            if (distributionChart) distributionChart.destroy();
+            distributionChart = new Chart(document.getElementById('distributionChart'), {
+                type: 'bar',
+                data: {
+                    labels: distLabels,
+                    datasets: [{
+                        data: distData,
+                        backgroundColor: distColors,
+                        borderRadius: 6,
+                        barThickness: 30
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { stepSize: 1 } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Evolution chart
+            if (evolutionChart) evolutionChart.destroy();
+
+            if (data.evolution && data.evolution.length > 0) {
+                const evoLabels = data.evolution.map(e => {
+                    const d = new Date(e.date);
+                    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+                });
+                const evoData = data.evolution.map(e => e.average);
+
+                evolutionChart = new Chart(document.getElementById('evolutionChart'), {
+                    type: 'line',
+                    data: {
+                        labels: evoLabels,
+                        datasets: [{
+                            label: 'Note moyenne',
+                            data: evoData,
+                            borderColor: '#005596',
+                            backgroundColor: 'rgba(0, 85, 150, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: '#005596',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { min: 1, max: 5, ticks: { stepSize: 1 } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function maskPhone(phone) {
+            if (!phone || phone.length < 4) return '\u2022\u2022\u2022\u2022';
+            const last4 = phone.slice(-4);
+            return '\u2022\u2022\u2022\u2022 ' + last4.slice(0, 2) + ' ' + last4.slice(2);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateTable(data) {
+            const tbody = document.getElementById('surveysTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const tableSection = document.getElementById('tableSection');
+            const totalBadge = document.getElementById('totalBadge');
+
+            totalBadge.textContent = data.total + ' résultat' + (data.total > 1 ? 's' : '');
+
+            if (data.items.length === 0) {
+                emptyState.classList.remove('hidden');
+                tableSection.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tableSection.classList.remove('hidden');
+
+            tbody.innerHTML = data.items.map(item => {
+                const date = new Date(item.receivedAt).toLocaleString('fr-FR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+                const rowBg = item.rating <= 2 ? 'bg-red-50' : '';
+                const messageHtml = item.message
+                    ? escapeHtml(item.message)
+                    : '<span class="text-gray-400 italic">\u2014</span>';
+                return `
+                    <tr class="${rowBg} border-b border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">${date}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${renderStars(item.rating)}</td>
+                        <td class="px-4 py-3 text-sm text-gray-500 font-mono whitespace-nowrap">${maskPhone(item.phone)}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">${messageHtml}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Pagination
+            document.getElementById('pageInfo').textContent = `Page ${data.page} sur ${data.totalPages} (${data.total} résultats)`;
+            document.getElementById('btnPrev').disabled = data.page <= 1;
+            document.getElementById('btnNext').disabled = data.page >= data.totalPages;
+        }
+
+        // === Filter Actions ===
+        function setPeriod(period) {
+            currentPeriod = period;
+            currentPage = 1;
+
+            // Update button styles
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.classList.remove('bg-keolis-blue', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+            const activeBtn = document.getElementById('period-' + period);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
+                activeBtn.classList.add('bg-keolis-blue', 'text-white');
+            }
+
+            // Show/hide custom date inputs
+            const customDates = document.getElementById('customDates');
+            if (period === 'custom') {
+                customDates.classList.remove('hidden');
+            } else {
+                customDates.classList.add('hidden');
+                loadAll();
+            }
+        }
+
+        function applyCustomDates() {
+            const start = document.getElementById('dateStart').value;
+            const end = document.getElementById('dateEnd').value;
+            if (start) customStartDate = new Date(start).toISOString();
+            if (end) {
+                const endDate = new Date(end);
+                endDate.setHours(23, 59, 59, 999);
+                customEndDate = endDate.toISOString();
+            }
+            if (start && end) {
+                currentPage = 1;
+                loadAll();
+            }
+        }
+
+        function toggleRating(rating) {
+            const idx = selectedRatings.indexOf(rating);
+            if (idx > -1) {
+                selectedRatings.splice(idx, 1);
+            } else {
+                selectedRatings.push(rating);
+            }
+            currentPage = 1;
+
+            // Update star button styles
+            const ratingColors = { 1: 'bg-red-500', 2: 'bg-orange-500', 3: 'bg-yellow-500', 4: 'bg-lime-500', 5: 'bg-green-500' };
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById('rating-' + i);
+                if (selectedRatings.includes(i)) {
+                    btn.classList.remove('bg-gray-100', 'text-gray-700');
+                    btn.classList.add(ratingColors[i], 'text-white');
+                } else {
+                    btn.classList.remove(ratingColors[i], 'text-white');
+                    btn.classList.add('bg-gray-100', 'text-gray-700');
+                }
+            }
+
+            loadAll();
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            loadHistory();
+        }
+
+        async function exportCSV() {
+            window.location.href = `/api/surveys/export?${buildQueryParams()}`;
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/login.html';
+            } catch (error) {
+                window.location.href = '/login.html';
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            setPeriod('7');
+        });
+    </script>
+</body>
+</html>
