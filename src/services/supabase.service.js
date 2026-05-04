@@ -1,5 +1,17 @@
 const { createClient } = require('@supabase/supabase-js');
 
+// Polyfill WebSocket : Node 20 (image alpine) n'a pas WebSocket natif, et
+// @supabase/supabase-js v2.105+ le requiert meme quand on n'utilise pas
+// realtime. On l'attache au global avant la creation du client.
+if (typeof globalThis.WebSocket === 'undefined') {
+  try {
+    globalThis.WebSocket = require('ws');
+  } catch (e) {
+    // ws absent : le client Supabase plantera au premier appel reseau,
+    // mais on laisse passer pour ne pas bloquer le boot du process.
+  }
+}
+
 let cachedClient = null;
 
 /**
