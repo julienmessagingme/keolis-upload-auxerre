@@ -126,15 +126,48 @@ function parseDateRange(q) {
 }
 
 /**
- * Convertit un range YYYY-MM-DD (Europe/Paris) en bornes ISO UTC.
- * Approximation : on prend 00:00:00 UTC pour from et 23:59:59.999 UTC pour to.
- * Cela inclut potentiellement 1-2h supplementaires aux extremites selon la DST,
- * mais c'est plus tolerant (on n'exclut jamais d'evenements legitimes).
+ * Calcule l'offset UTC d'Europe/Paris (en heures) pour une date donnee.
+ * Retourne 1 en hiver (CET = UTC+1), 2 en ete (CEST = UTC+2).
+ * Robuste a la DST car on questionne Intl pour la date specifique.
+ */
+function parisOffsetHours(yyyymmdd) {
+  // On prend midi UTC pour eviter les ambiguites aux changements d'heure
+  const d = new Date(`${yyyymmdd}T12:00:00Z`);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Paris',
+    hour: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const parisHour = parseInt(parts.find((p) => p.type === 'hour').value, 10);
+  return parisHour - 12;
+}
+
+/**
+ * Convertit un range YYYY-MM-DD (Europe/Paris) en bornes ISO UTC exactes.
+ * Gere la DST correctement : 00:00:00 Paris = (24 - offset) UTC du jour
+ * precedent, soit 22:00 UTC en ete (CEST) ou 23:00 UTC en hiver (CET).
+ *
+ * Garantit que :
+ *   - listCustomEvents (count exact) compte les events du jour Paris from
+ *     au jour Paris to, sans biais.
+ *   - dailyCustomEvent (groupage par parisDay) couvre toutes les heures
+ *     du jour Paris from au jour Paris to.
  */
 function isoBoundsParis(from, to) {
-  const fromUtc = `${from}T00:00:00.000Z`;
-  const toUtc = `${to}T23:59:59.999Z`;
-  return { fromUtc, toUtc };
+  const fromOffset = parisOffsetHours(from);
+  const toOffset = parisOffsetHours(to);
+
+  // 00:00:00 jour `from` Paris = (jour `from` 00:00 - offset h) UTC
+  const fromUtc = new Date(`${from}T00:00:00.000Z`);
+  fromUtc.setUTCHours(fromUtc.getUTCHours() - fromOffset);
+
+  // 23:59:59.999 jour `to` Paris = (jour `to` 23:59:59.999 - offset h) UTC
+  const toUtc = new Date(`${to}T23:59:59.999Z`);
+  toUtc.setUTCHours(toUtc.getUTCHours() - toOffset);
+
+  return {
+    fromUtc: fromUtc.toISOString(),
+    toUtc: toUtc.toISOString(),
+  };
 }
 
 /**
