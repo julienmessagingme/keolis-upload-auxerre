@@ -5,7 +5,17 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(xargs grep *)",
+      "Bash(git fetch *)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(ssh -i '~/.ssh/id_ed25519' -o StrictHostKeyChecking=no ubuntu@146.59.233.252 'ls /home/ && echo '\\\\''---PM2---'\\\\'' && export PATH=/home/ubuntu/.nvm/versions/node/v20.20.1/bin:$PATH && pm2 list 2>&1 | head -30')",
+      "Bash(ssh -i ~/.ssh/id_ed25519 ubuntu@146.59.233.252 \"sudo cp -r /home/ubuntu/keolis-auxerre /home/ubuntu/keolis-auxerre-backup-$\\(date +%Y%m%d-%H%M%S\\) && sudo ls -ld /home/ubuntu/keolis-auxerre-backup-* 2>&1\")",
+      "Bash(rsync --version)",
+      "Bash(ssh -i ~/.ssh/id_ed25519 ubuntu@146.59.233.252 \"cd /home/ubuntu/keolis-auxerre && tar czf - --exclude='./.env' --exclude='./node_modules' --exclude='./data' --exclude='./NUL' --exclude='./C:Users*' --exclude='./.git' --exclude='./.claude' .\")",
+      "Bash(tar xzf *)",
+      "Bash(git -c user.name=julienmessagingme -c user.email=203261261+julienmessagingme@users.noreply.github.com commit -m ' *)"
     ]
   }
 }

@@ -11,19 +11,34 @@ class SurveysService {
       return { success: false, error: 'phone, rating et date sont requis' };
     }
 
-    const ratingInt = parseInt(rating);
-    if (isNaN(ratingInt) || ratingInt < 1 || ratingInt > 5) {
-      return { success: false, error: 'rating doit être un entier entre 1 et 5' };
+    // Validation phone (5-20 chars)
+    const cleanPhone = String(phone).trim();
+    if (cleanPhone.length > 20 || cleanPhone.length < 5) {
+      return { success: false, error: 'phone invalide (5-20 caracteres)' };
     }
 
+    const ratingInt = parseInt(rating);
+    if (isNaN(ratingInt) || ratingInt < 1 || ratingInt > 5) {
+      return { success: false, error: 'rating doit etre un entier entre 1 et 5' };
+    }
+
+    // Validation date ISO 8601
+    const receivedDate = new Date(date);
+    if (isNaN(receivedDate.getTime())) {
+      return { success: false, error: 'date invalide (format ISO 8601 attendu)' };
+    }
+
+    // Tronquer message si trop long (2000 chars max)
+    const cleanMessage = message ? String(message).substring(0, 2000) : null;
+
     const id = databaseService.addSurvey({
-      phone,
+      phone: cleanPhone,
       rating: ratingInt,
-      message: message || null,
-      receivedAt: date
+      message: cleanMessage,
+      receivedAt: receivedDate.toISOString()
     });
 
-    console.log(`✓ Enquête enregistrée: ${ratingInt}★ de ****${phone.slice(-4)}`);
+    console.log(`✓ Enquete enregistree: ${ratingInt}★ de ****${cleanPhone.slice(-4)}`);
     return { success: true, id };
   }
 
@@ -31,7 +46,9 @@ class SurveysService {
    * Récupère les stats agrégées
    */
   getStats(options = {}) {
-    const stats = databaseService.getSurveyStats(options);
+    const { ratings, ...rest } = options;
+    const parsedRatings = ratings ? ratings.split(',').map(Number).filter(n => n >= 1 && n <= 5) : null;
+    const stats = databaseService.getSurveyStats({ ...rest, ratings: parsedRatings });
 
     const satisfied = stats.distribution
       .filter(d => d.rating >= 4)

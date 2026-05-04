@@ -1,0 +1,7 @@
+# Security Policy - Keolis Auxerre (MessagingMe)
+# https://securitytxt.org/ — RFC 9116
+
+Contact: mailto:julien@messagingme.fr
+Preferred-Languages: fr, en
+Canonical: https://keolisauxerre.messagingme.app/.well-known/security.txt
+Expires: 2027-03-04T00:00:00.000Z

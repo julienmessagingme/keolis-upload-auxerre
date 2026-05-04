@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/favicon2.png">
     <title>Base de Connaissances - Plateforme Keolis Auxerre</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
@@ -643,9 +644,14 @@
                     progressFill.style.width = '100%';
                     progressText.textContent = editingItemId ? 'Mise à jour terminée!' : 'Indexation terminée!';
 
-                    const message = editingItemId
-                        ? '✓ Q&A mise à jour avec succès!'
-                        : `✓ Document ajouté avec succès à la Base de connaissances Keolis!`;
+                    let message;
+                    if (editingItemId) {
+                        message = '✓ Q&A mise à jour avec succès!';
+                    } else if (result.upserted) {
+                        message = '✓ Q&A mise à jour (une entrée avec la même question existait déjà)';
+                    } else {
+                        message = '✓ Document ajouté avec succès à la Base de connaissances Keolis!';
+                    }
                     showMessage(message, 'success');
 
                     // Recharger l'historique depuis le début
@@ -1139,10 +1145,12 @@
             } else if (event.type === 'success') {
                 const pct = Math.round(((event.index + 1) / total) * 100);
                 excelProgressFill.style.width = pct + '%';
-                excelSuccessCount.textContent = `${event.successes} réussies`;
+                const upsertLabel = event.upserts > 0 ? ` (dont ${event.upserts} MAJ)` : '';
+                excelSuccessCount.textContent = `${event.successes} réussies${upsertLabel}`;
                 excelErrorCount.textContent = `${event.failureCount} erreurs`;
             } else if (event.type === 'failure') {
-                excelSuccessCount.textContent = `${event.successes} réussies`;
+                const upsertLabel = event.upserts > 0 ? ` (dont ${event.upserts} MAJ)` : '';
+                excelSuccessCount.textContent = `${event.successes} réussies${upsertLabel}`;
                 excelErrorCount.textContent = `${event.failureCount} erreurs`;
             } else if (event.type === 'done') {
                 excelProgressFill.style.width = '100%';
@@ -1163,10 +1171,12 @@
             excelImportBtn.classList.remove('hidden');
             excelImportBtn.disabled = true;
 
+            const upsertInfo = summary.upserts > 0 ? `<span class="text-blue-600">${summary.upserts} mises à jour</span>` : '';
             let html = `<div class="p-4 rounded-lg ${summary.failures && summary.failures.length > 0 ? 'bg-yellow-50 border-l-4 border-yellow-500' : 'bg-green-50 border-l-4 border-green-500'}">
                 <p class="font-semibold text-gray-800 mb-2">Résumé de l'import</p>
-                <div class="flex gap-4 text-sm mb-2">
+                <div class="flex gap-4 text-sm mb-2 flex-wrap">
                     <span class="text-green-600">${summary.successes} réussies</span>
+                    ${upsertInfo}
                     <span class="text-red-600">${summary.failures ? summary.failures.length : 0} erreurs</span>
                     <span class="text-gray-500">sur ${summary.total} total</span>
                 </div>`;

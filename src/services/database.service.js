@@ -127,6 +127,30 @@ class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_surveys_receivedAt ON surveys(receivedAt DESC);
       CREATE INDEX IF NOT EXISTS idx_surveys_rating ON surveys(rating);
     `);
+
+    // Table pour l'audit des connexions
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS login_audit (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT NOT NULL,
+        ip TEXT NOT NULL,
+        userAgent TEXT,
+        success INTEGER NOT NULL DEFAULT 0,
+        failReason TEXT,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_login_audit_email ON login_audit(email);
+      CREATE INDEX IF NOT EXISTS idx_login_audit_ip ON login_audit(ip);
+      CREATE INDEX IF NOT EXISTS idx_login_audit_createdAt ON login_audit(createdAt DESC);
+    `);
+
+    // Nettoyage automatique des vieux logs d'audit (> 90 jours)
+    this.db.exec(`
+      DELETE FROM login_audit WHERE createdAt < datetime('now', '-90 days')
+    `);
   }
 
   /**
@@ -219,16 +243,27 @@ class DatabaseService {
   }
 
   /**
-   * Met à jour un item
+   * Met a jour un item
+   * Seules les colonnes autorisees peuvent etre modifiees (protection SQL injection)
    */
   updateKnowledgeItem(id, updates) {
+    const ALLOWED_COLUMNS = new Set([
+      'question', 'answer', 'title', 'status', 'fileName',
+      'vectorStoreFileId', 'fileId', 'type', 'subType'
+    ]);
+
     const fields = [];
     const values = [];
 
     for (const [key, value] of Object.entries(updates)) {
+      if (!ALLOWED_COLUMNS.has(key)) {
+        throw new Error(`Colonne non autorisee: ${key}`);
+      }
       fields.push(`${key} = ?`);
       values.push(value);
     }
+
+    if (fields.length === 0) return;
 
     values.push(id);
 
@@ -261,12 +296,27 @@ class DatabaseService {
     const trimmedQ = question.trim();
     const trimmedA = answer.trim();
 
+    // Priorite 1 : match sur la question (permet l'upsert en amont)
     for (const item of items) {
       if (item.question && item.question.trim() === trimmedQ) {
-        return { field: 'question', existingQuestion: item.question };
+        return {
+          field: 'question',
+          id: item.id,
+          question: item.question,
+          answer: item.answer
+        };
       }
+    }
+
+    // Priorite 2 : match sur la reponse uniquement
+    for (const item of items) {
       if (item.answer && item.answer.trim() === trimmedA) {
-        return { field: 'answer', existingQuestion: item.question };
+        return {
+          field: 'answer',
+          id: item.id,
+          question: item.question,
+          answer: item.answer
+        };
       }
     }
 
@@ -611,7 +661,7 @@ class DatabaseService {
    * Récupère les statistiques des enquêtes
    */
   getSurveyStats(options = {}) {
-    const { startDate = null, endDate = null } = options;
+    const { startDate = null, endDate = null, ratings = null } = options;
 
     let whereClause = 'WHERE 1=1';
     let params = [];
@@ -624,6 +674,12 @@ class DatabaseService {
     if (endDate) {
       whereClause += ' AND receivedAt <= ?';
       params.push(endDate);
+    }
+
+    if (ratings && Array.isArray(ratings) && ratings.length > 0) {
+      const placeholders = ratings.map(() => '?').join(',');
+      whereClause += ` AND rating IN (${placeholders})`;
+      params.push(...ratings);
     }
 
     // Total et moyenne
@@ -688,7 +744,79 @@ class DatabaseService {
       params.push(...ratings);
     }
 
-    query += ' ORDER BY receivedAt DESC';
+    query += ' ORDER BY receivedAt DESC LIMIT 100000';
+
+    const stmt = this.db.prepare(query);
+    return stmt.all(...params);
+  }
+
+  // ==================== LOGIN AUDIT ====================
+
+  /**
+   * Enregistre une tentative de connexion
+   */
+  addLoginAudit({ email, ip, userAgent, success, failReason = null }) {
+    const stmt = this.db.prepare(`
+      INSERT INTO login_audit (email, ip, userAgent, success, failReason)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    stmt.run(email, ip, userAgent || null, success ? 1 : 0, failReason);
+  }
+
+  /**
+   * Compte les tentatives echouees recentes pour une IP (lockout persistant)
+   * @param {string} ip - Adresse IP
+   * @param {number} windowMinutes - Fenetre de temps en minutes
+   * @returns {{ count: number, lastAttempt: string|null }}
+   */
+  getRecentFailedAttempts(ip, windowMinutes = 15) {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as count, MAX(createdAt) as lastAttempt
+      FROM login_audit
+      WHERE ip = ? AND success = 0
+      AND createdAt > datetime('now', ?)
+    `);
+    return stmt.get(ip, `-${windowMinutes} minutes`);
+  }
+
+  /**
+   * Compte les tentatives echouees recentes pour un EMAIL (lockout par compte)
+   * Protection anti-VPN : bloque le compte meme si l'attaquant change d'IP
+   * @param {string} email - Adresse email
+   * @param {number} windowMinutes - Fenetre de temps en minutes
+   * @returns {{ count: number, lastAttempt: string|null, distinctIPs: number }}
+   */
+  getRecentFailedAttemptsByEmail(email, windowMinutes = 30) {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as count, MAX(createdAt) as lastAttempt, COUNT(DISTINCT ip) as distinctIPs
+      FROM login_audit
+      WHERE email = ? AND success = 0
+      AND createdAt > datetime('now', ?)
+    `);
+    return stmt.get(email, `-${windowMinutes} minutes`);
+  }
+
+  /**
+   * Recupere l'historique des connexions (pour le dashboard admin)
+   */
+  getLoginAuditHistory(options = {}) {
+    const { limit = 50, offset = 0, email = null, successOnly = null } = options;
+
+    let query = 'SELECT * FROM login_audit WHERE 1=1';
+    let params = [];
+
+    if (email) {
+      query += ' AND email = ?';
+      params.push(email);
+    }
+
+    if (successOnly !== null) {
+      query += ' AND success = ?';
+      params.push(successOnly ? 1 : 0);
+    }
+
+    query += ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
 
     const stmt = this.db.prepare(query);
     return stmt.all(...params);

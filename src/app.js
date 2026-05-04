@@ -1,5 +1,7 @@
 const express = require('express');
 const session = require('express-session');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const config = require('./config');
 const middleware = require('./middleware');
@@ -21,19 +23,105 @@ config.database.initialize();
 function createApp() {
   const app = express();
 
+  // =========== SÉCURITÉ ===========
+
+  // Trust proxy (derrière Nginx Proxy Manager)
+  app.set('trust proxy', 1);
+
+  // Headers de sécurité (Helmet)
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "cdn.tailwindcss.com", "cdn.jsdelivr.net", "cdn.sheetjs.com"],
+        scriptSrcAttr: ["'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "f003.backblazeb2.com"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  // Rate limiting global (100 req/min par IP)
+  app.use(rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Trop de requêtes, réessayez dans une minute' }
+  }));
+
+  // Rate limiting strict sur login (5 tentatives / 15 min par IP)
+  app.use('/api/auth/login', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' }
+  }));
+
+  // Rate limiting sur le webhook surveys (30 req/min — protège contre le spam)
+  app.use('/api/surveys/webhook', rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Trop de requêtes webhook' }
+  }));
+
+  // =========== CORS ===========
+
+  // Bloquer les requetes cross-origin (pas d'API publique)
+  app.use((req, res, next) => {
+    const origin = req.get('Origin');
+    if (origin) {
+      // Autoriser uniquement notre propre domaine
+      const allowed = [config.server.baseUrl];
+      if (!allowed.includes(origin)) {
+        return res.status(403).json({ success: false, error: 'Origin non autorise' });
+      }
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    // Pas de headers CORS si pas d'Origin (requetes same-origin normales)
+    next();
+  });
+
   // =========== MIDDLEWARES GLOBAUX ===========
 
-  // Parser JSON
-  app.use(express.json());
+  // Parser JSON (limite a 1MB)
+  app.use(express.json({ limit: '1mb' }));
 
   // Configuration des sessions
   app.use(session(config.session));
 
+  // =========== AUDIT LOG ===========
+
+  // Log des actions sensibles (mutations API) pour tracabilite
+  app.use('/api', (req, res, next) => {
+    if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+      const user = req.session?.user?.email || 'anonymous';
+      const ip = req.ip;
+      console.log(`[AUDIT] ${new Date().toISOString()} | ${req.method} ${req.originalUrl} | user=${user} | ip=${ip}`);
+    }
+    next();
+  });
+
   // =========== ROUTES PUBLIQUES ===========
+
+  // security.txt (RFC 9116) — accessible sans auth
+  app.use('/.well-known', express.static(path.join(__dirname, '..', 'public', '.well-known')));
 
   // Pages publiques (accessibles sans authentification)
   app.use('/login.html', express.static(path.join(__dirname, '..', 'public', 'login.html')));
   app.use('/setup-password.html', express.static(path.join(__dirname, '..', 'public', 'setup-password.html')));
+
+  // Favicon accessible publiquement
+  app.use('/favicon2.png', express.static(path.join(__dirname, '..', 'public', 'favicon2.png')));
 
   // =========== ROUTES API ===========
 
@@ -57,6 +145,24 @@ function createApp() {
   // Route pour l'accueil - PROTÉGÉE
   app.get('/', middleware.requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'news.html'));
+  });
+
+  // Route pour le compte utilisateur - PROTÉGÉE
+  app.get('/account.html', middleware.requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'account.html'));
+  });
+
+  // Pages protégées - requièrent authentification
+  app.get('/news.html', middleware.requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'news.html'));
+  });
+
+  app.get('/knowledge.html', middleware.requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'knowledge.html'));
+  });
+
+  app.get('/surveys.html', middleware.requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'surveys.html'));
   });
 
   // Route pour l'admin - ADMIN SEULEMENT

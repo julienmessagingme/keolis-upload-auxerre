@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/favicon2.png">
+    <title>Connexion - Plateforme Keolis Auxerre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'keolis-blue': '#005596',
+                        'keolis-light': '#0072CE',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-keolis-blue to-keolis-light min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <!-- Logo et Titre -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-24 h-24 bg-white rounded-2xl shadow-lg mb-4 p-3">
+                <img src="https://f003.backblazeb2.com/file/auxerre/Capture+d'%C3%A9cran+2026-02-04+171543.png" alt="Messaging Me" class="w-full h-full object-contain">
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">Plateforme Keolis Auxerre</h1>
+            <p class="text-blue-100">Gestion par Messaging Me</p>
+        </div>
+
+        <!-- Formulaire de connexion -->
+        <div class="bg-white rounded-2xl shadow-2xl p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Connexion</h2>
+
+            <!-- Step 1: Email + Password -->
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-gray-700 font-semibold mb-2">Email</label>
+                    <input type="email" id="email" required autocomplete="email"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-keolis-blue transition-colors"
+                        placeholder="votre.email@exemple.fr">
+                </div>
+                <div>
+                    <label for="password" class="block text-gray-700 font-semibold mb-2">Mot de passe</label>
+                    <input type="password" id="password" required autocomplete="current-password"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-keolis-blue transition-colors"
+                        placeholder="••••••••">
+                </div>
+
+                <div id="messageArea" class="hidden"></div>
+
+                <button type="submit" id="loginBtn"
+                    class="w-full bg-keolis-blue text-white font-bold py-3 px-6 rounded-lg transition-all hover:bg-keolis-light flex items-center justify-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                    </svg>
+                    Se connecter
+                </button>
+            </form>
+
+            <!-- Step 2: 2FA Code (hidden by default) -->
+            <form id="totpForm" class="hidden space-y-4">
+                <div class="bg-blue-50 border-l-4 border-keolis-blue p-4 rounded mb-2">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-keolis-blue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                        <p class="text-keolis-blue text-sm font-bold">Verification en deux etapes</p>
+                    </div>
+                    <p class="text-blue-600 text-xs mt-1">Entrez le code affiche dans votre application d'authentification ou un code de secours.</p>
+                </div>
+
+                <div>
+                    <label for="totpCode" class="block text-gray-700 font-semibold mb-2">Code d'authentification</label>
+                    <input type="text" id="totpCode" maxlength="8" inputmode="numeric" autocomplete="one-time-code"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-keolis-blue text-center text-2xl tracking-widest font-mono"
+                        placeholder="000000">
+                </div>
+
+                <div id="totpMessageArea" class="hidden"></div>
+
+                <button type="submit" id="totpBtn"
+                    class="w-full bg-keolis-blue text-white font-bold py-3 px-6 rounded-lg transition-all hover:bg-keolis-light flex items-center justify-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Verifier
+                </button>
+
+                <button type="button" onclick="backToLogin()"
+                    class="w-full text-gray-500 text-sm hover:text-gray-700 transition-colors py-2">
+                    ← Retour a la connexion
+                </button>
+            </form>
+
+            <!-- Loader -->
+            <div id="loader" class="hidden mt-4 flex items-center justify-center gap-3">
+                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-keolis-blue"></div>
+                <p class="text-gray-600">Connexion en cours...</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-white text-sm">
+            <p>&copy; 2026 Keolis Auxerre - Plateforme securisee</p>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const totpForm = document.getElementById('totpForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const totpCodeInput = document.getElementById('totpCode');
+        const loginBtn = document.getElementById('loginBtn');
+        const totpBtn = document.getElementById('totpBtn');
+        const messageArea = document.getElementById('messageArea');
+        const totpMessageArea = document.getElementById('totpMessageArea');
+        const loader = document.getElementById('loader');
+
+        // Credentials stockes pour le step 2
+        let pendingEmail = '';
+        let pendingPassword = '';
+
+        // Step 1: Email + Password
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                showMessage(messageArea, 'Veuillez remplir tous les champs', 'error');
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loader.classList.remove('hidden');
+            messageArea.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.requires2FA) {
+                    // 2FA requis — afficher le step 2
+                    pendingEmail = email;
+                    pendingPassword = password;
+                    loginForm.classList.add('hidden');
+                    totpForm.classList.remove('hidden');
+                    totpCodeInput.focus();
+                    loginBtn.disabled = false;
+                } else if (result.success) {
+                    // Login direct (pas de 2FA)
+                    showMessage(messageArea, '✓ Connexion reussie! Redirection...', 'success');
+                    setTimeout(() => { window.location.href = '/'; }, 1000);
+                } else {
+                    showMessage(messageArea, result.error || 'Email ou mot de passe incorrect', 'error');
+                    loginBtn.disabled = false;
+                }
+            } catch (error) {
+                showMessage(messageArea, 'Erreur de connexion au serveur', 'error');
+                loginBtn.disabled = false;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        });
+
+        // Step 2: TOTP Code
+        totpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const totpCode = totpCodeInput.value.trim();
+            if (!totpCode) {
+                showMessage(totpMessageArea, 'Entrez votre code d\'authentification', 'error');
+                return;
+            }
+
+            totpBtn.disabled = true;
+            loader.classList.remove('hidden');
+            totpMessageArea.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: pendingEmail,
+                        password: pendingPassword,
+                        totpCode
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success && !result.requires2FA) {
+                    showMessage(totpMessageArea, '✓ Connexion reussie! Redirection...', 'success');
+                    pendingEmail = '';
+                    pendingPassword = '';
+                    setTimeout(() => { window.location.href = '/'; }, 1000);
+                } else {
+                    showMessage(totpMessageArea, result.error || 'Code invalide', 'error');
+                    totpBtn.disabled = false;
+                    totpCodeInput.value = '';
+                    totpCodeInput.focus();
+                }
+            } catch (error) {
+                showMessage(totpMessageArea, 'Erreur de connexion au serveur', 'error');
+                totpBtn.disabled = false;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        });
+
+        function backToLogin() {
+            pendingEmail = '';
+            pendingPassword = '';
+            totpCodeInput.value = '';
+            totpForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            totpMessageArea.classList.add('hidden');
+            messageArea.classList.add('hidden');
+        }
+
+        function showMessage(area, text, type) {
+            const className = type === 'success'
+                ? 'bg-green-100 border-green-500 text-green-800'
+                : 'bg-red-100 border-red-500 text-red-800';
+            area.innerHTML = `<div class="${className} border-l-4 p-4 rounded"><p class="font-semibold text-sm">${text}</p></div>`;
+            area.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

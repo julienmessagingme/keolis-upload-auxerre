@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Technique - Keolis MessagingMe App</title>
+<style>
+  @page {
+    size: A3 landscape;
+    margin: 12mm;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #ffffff;
+    color: #1a1a1a;
+    padding: 32px 40px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 32px;
+  }
+
+  .diagram {
+    position: relative;
+    width: 1280px;
+    height: 840px;
+    margin: 0 auto;
+  }
+
+  /* ========== SVG ARROWS ========== */
+  .arrows {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .arrow-line {
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .arrow-label {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 9.5px;
+  }
+
+  .arrow-label-bg {
+    fill: #ffffff;
+    opacity: 0.92;
+  }
+
+  /* ========== BOXES ========== */
+  .box {
+    position: absolute;
+    border-radius: 6px;
+    padding: 12px 14px;
+    z-index: 2;
+    background: #fff;
+  }
+
+  .box-title {
+    font-weight: 700;
+    font-size: 0.78rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .box-detail {
+    font-size: 0.68rem;
+    color: #555;
+    line-height: 1.45;
+  }
+
+  .box-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 600;
+    margin-top: 5px;
+    letter-spacing: 0.01em;
+  }
+
+  /* ========== USERS ========== */
+  .user-zone {
+    border: 1.5px solid #2563eb;
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08);
+  }
+  .user-zone .box-title { color: #1d4ed8; }
+
+  /* ========== VPS ZONE ========== */
+  .vps-zone {
+    position: absolute;
+    border: 1.8px solid #94a3b8;
+    border-radius: 10px;
+    background: #f8fafc;
+  }
+
+  .vps-label {
+    position: absolute;
+    top: -11px;
+    left: 18px;
+    background: #fff;
+    padding: 1px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    border: 1.5px solid #94a3b8;
+    border-radius: 4px;
+  }
+
+  /* ========== INFRA ========== */
+  .infra-box {
+    border: 1.5px solid #16a34a;
+    box-shadow: 0 1px 4px rgba(22, 163, 74, 0.06);
+  }
+  .infra-box .box-title { color: #15803d; }
+
+  /* ========== APP ========== */
+  .app-box {
+    border: 1.5px solid #7c3aed;
+    box-shadow: 0 1px 4px rgba(124, 58, 237, 0.08);
+    background: #faf8ff;
+  }
+  .app-box .box-title { color: #6d28d9; }
+
+  .app-module {
+    background: #f3f0ff;
+    border: 1px solid #ddd6fe;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 0.6rem;
+    color: #5b21b6;
+    display: inline-block;
+    margin: 2px 1px;
+    font-weight: 500;
+  }
+
+  /* ========== DB ========== */
+  .db-box {
+    border: 1.5px solid #0891b2;
+    box-shadow: 0 1px 4px rgba(8, 145, 178, 0.06);
+  }
+  .db-box .box-title { color: #0e7490; }
+
+  /* ========== EXTERNAL SERVICE ========== */
+  .ext-box {
+    border: 1.5px solid #d97706;
+    box-shadow: 0 1px 4px rgba(217, 119, 6, 0.06);
+  }
+  .ext-box .box-title { color: #b45309; }
+
+  /* ========== CHATBOT ========== */
+  .chatbot-box {
+    border: 1.5px solid #059669;
+    box-shadow: 0 1px 4px rgba(5, 150, 105, 0.06);
+  }
+  .chatbot-box .box-title { color: #047857; }
+
+  /* ========== SECURITY ========== */
+  .security-strip {
+    position: absolute;
+    border-radius: 6px;
+    padding: 10px 16px;
+    z-index: 2;
+    background: #fff;
+    border: 1.5px solid #dc2626;
+    box-shadow: 0 1px 4px rgba(220, 38, 38, 0.06);
+  }
+  .security-strip .box-title { color: #b91c1c; font-size: 0.72rem; }
+
+  .security-layer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 2px 0;
+    font-size: 0.58rem;
+    color: #555;
+  }
+
+  .security-layer .num {
+    background: #fef2f2;
+    color: #b91c1c;
+    font-weight: 700;
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    border: 1px solid #fecaca;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.55rem;
+  }
+
+  /* ========== OTHER CONTAINERS ========== */
+  .other-container {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 2;
+  }
+  .other-container .box-title { color: #64748b; font-size: 0.7rem; }
+  .other-container .box-detail { font-size: 0.6rem; color: #94a3b8; }
+
+  /* ========== LEGEND ========== */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    color: #555;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  /* ========== PRINT ========== */
+  @media print {
+    body {
+      padding: 10px;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .diagram {
+      transform: scale(0.85);
+      transform-origin: top center;
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Architecture Technique — Keolis MessagingMe App</h1>
+<p class="subtitle">VPS OVH Ubuntu &middot; Docker &middot; Node.js / Express &middot; Mars 2026</p>
+
+<div class="diagram">
+
+  <!-- ==================== SVG ARROWS ==================== -->
+  <svg class="arrows" viewBox="0 0 1280 840">
+    <defs>
+      <marker id="a-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#2563eb"/>
+      </marker>
+      <marker id="a-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#16a34a"/>
+      </marker>
+      <marker id="a-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#d97706"/>
+      </marker>
+      <marker id="a-teal" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#0891b2"/>
+      </marker>
+      <marker id="a-emerald" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#059669"/>
+      </marker>
+      <marker id="a-emerald-r" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+        <polygon points="8 0, 0 3, 8 6" fill="#059669"/>
+      </marker>
+    </defs>
+
+    <!-- Employes -> NPM -->
+    <path d="M 170 82 L 170 158" class="arrow-line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+    <rect x="100" y="109" width="140" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="170" y="120" text-anchor="middle" class="arrow-label" fill="#2563eb">HTTPS (navigateur web)</text>
+
+    <!-- NPM -> App -->
+    <path d="M 248 200 L 345 272" class="arrow-line" stroke="#16a34a" marker-end="url(#a-green)"/>
+    <rect x="248" y="222" width="80" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="288" y="233" text-anchor="middle" class="arrow-label" fill="#16a34a">reverse proxy</text>
+
+    <!-- App -> OpenAI -->
+    <path d="M 615 295 L 820 172" class="arrow-line" stroke="#d97706" marker-end="url(#a-orange)"/>
+    <rect x="670" y="213" width="115" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="727" y="224" text-anchor="middle" class="arrow-label" fill="#d97706">upload docs + Q&amp;A</text>
+
+    <!-- App -> Backblaze -->
+    <path d="M 615 340 L 820 308" class="arrow-line" stroke="#d97706" marker-end="url(#a-orange)"/>
+    <rect x="678" y="310" width="90" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="723" y="321" text-anchor="middle" class="arrow-label" fill="#d97706">upload PDF</text>
+
+    <!-- App -> Gmail -->
+    <path d="M 615 385 L 820 418" class="arrow-line" stroke="#d97706" marker-end="url(#a-orange)"/>
+    <rect x="672" y="388" width="115" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="730" y="399" text-anchor="middle" class="arrow-label" fill="#d97706">emails d'invitation</text>
+
+    <!-- App -> MessagingMe (sortant) -->
+    <path d="M 615 420 L 820 512" class="arrow-line" stroke="#d97706" marker-end="url(#a-orange)"/>
+    <rect x="660" y="458" width="140" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="730" y="469" text-anchor="middle" class="arrow-label" fill="#d97706">webhook news / horaires</text>
+
+    <!-- MessagingMe -> App (entrant) -->
+    <path d="M 820 542 L 615 448" class="arrow-line" stroke="#059669" marker-end="url(#a-emerald)"/>
+    <rect x="665" y="492" width="140" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="735" y="503" text-anchor="middle" class="arrow-label" fill="#059669">webhook enquetes (1-5)</text>
+
+    <!-- App -> SQLite -->
+    <path d="M 445 462 L 375 540" class="arrow-line" stroke="#0891b2" marker-end="url(#a-teal)"/>
+
+    <!-- App -> JSON -->
+    <path d="M 530 462 L 548 540" class="arrow-line" stroke="#0891b2" marker-end="url(#a-teal)"/>
+
+    <!-- MessagingMe <-> WhatsApp -->
+    <path d="M 1005 535 L 1105 535" class="arrow-line" stroke="#059669" marker-end="url(#a-emerald)" marker-start="url(#a-emerald-r)"/>
+    <rect x="1025" y="515" width="60" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="1055" y="526" text-anchor="middle" class="arrow-label" fill="#059669">WhatsApp</text>
+
+    <!-- MessagingMe -> OpenAI (RAG) -->
+    <path d="M 935 495 L 935 188" class="arrow-line" stroke="#059669" stroke-dasharray="5,3" marker-end="url(#a-emerald)"/>
+    <rect x="942" y="342" width="95" height="15" rx="2" class="arrow-label-bg"/>
+    <text x="990" y="353" text-anchor="middle" class="arrow-label" fill="#059669">interroge RAG</text>
+  </svg>
+
+  <!-- ==================== USERS ==================== -->
+  <div class="box user-zone" style="left: 48px; top: 16px; width: 244px;">
+    <div class="box-title">Employes Keolis</div>
+    <div class="box-detail">Administrateurs et utilisateurs<br>Acces via navigateur web</div>
+    <span class="box-badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">keolisauxerre.messagingme.app</span>
+  </div>
+
+  <!-- ==================== VPS ZONE ==================== -->
+  <div class="vps-zone" style="left: 24px; top: 145px; width: 605px; height: 535px;">
+    <span class="vps-label">VPS OVH Ubuntu — 146.59.233.252</span>
+
+    <!-- NPM -->
+    <div class="box infra-box" style="left: 50px; top: 28px; width: 260px;">
+      <div class="box-title">Nginx Proxy Manager</div>
+      <div class="box-detail">
+        Reverse proxy HTTPS (ports 80 / 443)<br>
+        Certificats Let's Encrypt auto-renew<br>
+        Panel admin : SSH tunnel port 81
+      </div>
+      <span class="box-badge" style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0;">TLS / SSL</span>
+    </div>
+
+    <!-- App -->
+    <div class="box app-box" style="left: 195px; top: 120px; width: 375px; height: 200px;">
+      <div class="box-title">keolis-auxerre</div>
+      <div class="box-detail" style="margin-bottom: 6px;">
+        Node.js 20 Alpine &middot; Express 4.18<br>
+        Conteneur Docker — port interne 3000
+      </div>
+      <div style="margin-top: 6px;">
+        <span class="app-module">Authentification / 2FA</span>
+        <span class="app-module">Fiches horaires</span>
+        <span class="app-module">Actualites</span>
+        <span class="app-module">Base de connaissances</span>
+        <span class="app-module">Enquetes qualite</span>
+      </div>
+      <span class="box-badge" style="background: #f3f0ff; color: #6d28d9; border: 1px solid #ddd6fe; margin-top: 8px;">reseau Docker 172.18.0.x</span>
+    </div>
+
+    <!-- SQLite -->
+    <div class="box db-box" style="left: 175px; top: 385px; width: 168px;">
+      <div class="box-title">SQLite</div>
+      <div class="box-detail">
+        knowledge.db<br>
+        5 tables : knowledge, schedules,<br>news, surveys, login_audit
+      </div>
+      <span class="box-badge" style="background: #ecfeff; color: #0e7490; border: 1px solid #a5f3fc;">volume /data</span>
+    </div>
+
+    <!-- JSON -->
+    <div class="box db-box" style="left: 378px; top: 385px; width: 168px;">
+      <div class="box-title">users.json</div>
+      <div class="box-detail">
+        Utilisateurs + invitations<br>
+        Ecriture atomique<br>
+        Secrets 2FA (SHA-256)
+      </div>
+      <span class="box-badge" style="background: #ecfeff; color: #0e7490; border: 1px solid #a5f3fc;">volume /data</span>
+    </div>
+  </div>
+
+  <!-- Other containers -->
+  <div class="other-container" style="left: 44px; top: 600px; width: 148px;">
+    <div class="box-title">keolis-granddole</div>
+    <div class="box-detail">Clone app — port 3002<br>Reseau Grand Dole</div>
+  </div>
+
+  <div class="other-container" style="left: 210px; top: 600px; width: 110px;">
+    <div class="box-title">n8n</div>
+    <div class="box-detail">Automatisation<br>Port 5678</div>
+  </div>
+
+  <!-- ==================== EXTERNAL SERVICES ==================== -->
+
+  <!-- OpenAI -->
+  <div class="box ext-box" style="left: 820px; top: 122px; width: 228px;">
+    <div class="box-title">OpenAI API (Europe)</div>
+    <div class="box-detail">
+      Vector Store — vectorisation documents<br>
+      Files API — upload PDF / TXT / Q&amp;A<br>
+      RAG pour le chatbot WhatsApp
+    </div>
+    <span class="box-badge" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">api.openai.com</span>
+  </div>
+
+  <!-- Backblaze -->
+  <div class="box ext-box" style="left: 820px; top: 268px; width: 228px;">
+    <div class="box-title">Backblaze B2</div>
+    <div class="box-detail">
+      Stockage objet S3-compatible<br>
+      Bucket "auxerre" — fiches horaires PDF<br>
+      URL publique pour telechargement
+    </div>
+    <span class="box-badge" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">f003.backblazeb2.com</span>
+  </div>
+
+  <!-- Gmail -->
+  <div class="box ext-box" style="left: 820px; top: 393px; width: 228px;">
+    <div class="box-title">Serveur SMTP</div>
+    <div class="box-detail">
+      Nodemailer — SMTP configurable<br>
+      Actuellement Gmail (smtp.gmail.com:465)<br>
+      Emails d'invitation + alertes admin
+    </div>
+    <span class="box-badge" style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">SSL/TLS verifie en production</span>
+  </div>
+
+  <!-- MessagingMe -->
+  <div class="box chatbot-box" style="left: 820px; top: 495px; width: 190px;">
+    <div class="box-title">MessagingMe</div>
+    <div class="box-detail">
+      Plateforme chatbot WhatsApp<br>
+      Webhooks bidirectionnels :<br>
+      &uarr; recoit news / horaires<br>
+      &darr; envoie enquetes satisfaction
+    </div>
+    <span class="box-badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">ai.messagingme.app</span>
+  </div>
+
+  <!-- Usagers -->
+  <div class="box user-zone" style="left: 1098px; top: 500px; width: 168px; border-color: #059669;">
+    <div class="box-title" style="color: #047857;">Usagers transport</div>
+    <div class="box-detail">
+      WhatsApp — questions horaires,<br>
+      infos lignes, enquetes 1-5
+    </div>
+  </div>
+
+  <!-- ==================== SECURITY ==================== -->
+  <div class="security-strip" style="left: 24px; top: 710px; width: 1240px;">
+    <div class="box-title">Securite — Defense en profondeur (41 mesures, 8 couches)</div>
+    <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px;">
+      <div class="security-layer"><span class="num">1</span> Ports Docker 127.0.0.1</div>
+      <div class="security-layer"><span class="num">2</span> HTTPS / HSTS / TLS</div>
+      <div class="security-layer"><span class="num">3</span> Helmet + CSP</div>
+      <div class="security-layer"><span class="num">4</span> CORS strict + Rate limiting</div>
+      <div class="security-layer"><span class="num">5</span> Sessions + bcrypt 12 + 2FA TOTP</div>
+      <div class="security-layer"><span class="num">6</span> Roles admin / user</div>
+      <div class="security-layer"><span class="num">7</span> Prepared statements + validation</div>
+      <div class="security-layer"><span class="num">8</span> Audit trail SQLite + API</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background: #2563eb;"></div> Utilisateurs</div>
+  <div class="legend-item"><div class="legend-dot" style="background: #16a34a;"></div> Infrastructure</div>
+  <div class="legend-item"><div class="legend-dot" style="background: #7c3aed;"></div> Application</div>
+  <div class="legend-item"><div class="legend-dot" style="background: #0891b2;"></div> Bases de donnees</div>
+  <div class="legend-item"><div class="legend-dot" style="background: #d97706;"></div> Services externes</div>
+  <div class="legend-item"><div class="legend-dot" style="background: #059669;"></div> Chatbot WhatsApp</div>
+  <div class="legend-item"><div class="legend-dot" style="background: #dc2626;"></div> Securite</div>
+</div>
+
+</body>
+</html>

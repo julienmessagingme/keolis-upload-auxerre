@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/favicon2.png">
+    <title>Mon Compte - Plateforme Keolis Auxerre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'keolis-blue': '#005596',
+                        'keolis-light': '#0072CE',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-keolis-blue text-white shadow-lg">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                <h1 class="text-xl font-bold">Mon Compte</h1>
+            </div>
+            <a href="/" class="text-blue-200 hover:text-white transition-colors text-sm flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Retour
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+
+        <!-- ==================== SECTION 2FA ==================== -->
+        <section class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-blue-100 p-2 rounded-lg">
+                    <svg class="w-6 h-6 text-keolis-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Authentification a deux facteurs (2FA)</h2>
+                    <p class="text-gray-500 text-sm">Protegez votre compte avec Google Authenticator ou similaire</p>
+                </div>
+            </div>
+
+            <!-- Status 2FA -->
+            <div id="2fa-status" class="mb-4">
+                <div class="animate-pulse bg-gray-100 h-12 rounded-lg"></div>
+            </div>
+
+            <!-- Setup 2FA (quand desactive) -->
+            <div id="2fa-setup" class="hidden">
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded mb-4">
+                    <p class="text-yellow-800 text-sm font-medium">Le 2FA n'est pas active. Activez-le pour securiser votre compte.</p>
+                </div>
+                <button onclick="start2FASetup()" class="bg-keolis-blue text-white px-6 py-2 rounded-lg hover:bg-keolis-light transition-colors font-medium">
+                    Activer le 2FA
+                </button>
+            </div>
+
+            <!-- QR Code (pendant le setup) -->
+            <div id="2fa-qrcode" class="hidden">
+                <div class="bg-blue-50 border-l-4 border-keolis-blue p-4 rounded mb-4">
+                    <p class="text-blue-800 text-sm font-medium mb-2">Scannez ce QR code avec votre application d'authentification :</p>
+                    <p class="text-blue-600 text-xs">(Google Authenticator, Authy, Microsoft Authenticator...)</p>
+                </div>
+                <div class="flex flex-col items-center gap-4 mb-4">
+                    <img id="qr-image" src="" alt="QR Code 2FA" class="border-2 border-gray-200 rounded-lg">
+                    <div class="text-center">
+                        <p class="text-gray-500 text-xs mb-1">Ou entrez ce code manuellement :</p>
+                        <code id="secret-code" class="bg-gray-100 px-3 py-1 rounded text-sm font-mono"></code>
+                    </div>
+                </div>
+                <div class="flex items-end gap-3">
+                    <div class="flex-1">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">Code de verification (6 chiffres)</label>
+                        <input type="text" id="totp-code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-keolis-blue text-center text-2xl tracking-widest font-mono"
+                            placeholder="000000">
+                    </div>
+                    <button onclick="confirm2FA()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                        Confirmer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Backup codes (apres activation) -->
+            <div id="2fa-backup-codes" class="hidden">
+                <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded mb-4">
+                    <p class="text-green-800 text-sm font-bold mb-1">2FA active avec succes !</p>
+                    <p class="text-green-700 text-xs">Sauvegardez ces codes de secours en lieu sur. Chacun ne peut etre utilise qu'une seule fois.</p>
+                </div>
+                <div id="backup-codes-list" class="bg-gray-50 rounded-lg p-4 mb-4 font-mono text-sm grid grid-cols-2 gap-2">
+                </div>
+                <p class="text-red-600 text-xs font-bold mb-3">⚠ Ces codes ne seront plus affiches apres avoir quitte cette page !</p>
+                <button onclick="load2FAStatus()" class="bg-keolis-blue text-white px-6 py-2 rounded-lg hover:bg-keolis-light transition-colors font-medium">
+                    J'ai sauvegarde mes codes
+                </button>
+            </div>
+
+            <!-- 2FA active (gestion) -->
+            <div id="2fa-enabled" class="hidden">
+                <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded mb-4 flex items-center gap-3">
+                    <svg class="w-6 h-6 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    <div>
+                        <p class="text-green-800 text-sm font-bold">2FA actif</p>
+                        <p class="text-green-600 text-xs" id="backup-codes-remaining"></p>
+                    </div>
+                </div>
+                <div class="flex items-end gap-3">
+                    <div class="flex-1">
+                        <label class="block text-gray-700 text-sm font-semibold mb-1">Mot de passe (pour desactiver)</label>
+                        <input type="password" id="disable-2fa-password"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                            placeholder="Votre mot de passe">
+                    </div>
+                    <button onclick="disable2FA()" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium">
+                        Desactiver
+                    </button>
+                </div>
+            </div>
+
+            <div id="2fa-message" class="hidden mt-4"></div>
+        </section>
+
+        <!-- ==================== SECTION MOT DE PASSE ==================== -->
+        <section class="bg-white rounded-xl shadow-md p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-blue-100 p-2 rounded-lg">
+                    <svg class="w-6 h-6 text-keolis-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Changer le mot de passe</h2>
+                    <p class="text-gray-500 text-sm">Minimum 12 caracteres, majuscule, minuscule, chiffre, caractere special</p>
+                </div>
+            </div>
+
+            <form id="password-form" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Mot de passe actuel</label>
+                    <input type="password" id="current-password" required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-keolis-blue"
+                        placeholder="Votre mot de passe actuel">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Nouveau mot de passe</label>
+                    <input type="password" id="new-password" required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-keolis-blue"
+                        placeholder="Nouveau mot de passe (12+ caracteres)">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-semibold mb-1">Confirmer le nouveau mot de passe</label>
+                    <input type="password" id="confirm-new-password" required
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-keolis-blue"
+                        placeholder="Confirmez le nouveau mot de passe">
+                </div>
+
+                <!-- Exigences -->
+                <div class="bg-blue-50 border-l-4 border-keolis-blue p-4 rounded">
+                    <p class="font-semibold text-gray-700 text-xs mb-2">Exigences :</p>
+                    <ul class="text-xs text-gray-600 space-y-1">
+                        <li id="pw-length" class="flex items-center gap-2"><span class="text-gray-400">○</span> Minimum 12 caracteres</li>
+                        <li id="pw-upper" class="flex items-center gap-2"><span class="text-gray-400">○</span> Au moins 1 majuscule</li>
+                        <li id="pw-lower" class="flex items-center gap-2"><span class="text-gray-400">○</span> Au moins 1 minuscule</li>
+                        <li id="pw-digit" class="flex items-center gap-2"><span class="text-gray-400">○</span> Au moins 1 chiffre</li>
+                        <li id="pw-special" class="flex items-center gap-2"><span class="text-gray-400">○</span> Au moins 1 caractere special</li>
+                    </ul>
+                </div>
+
+                <div id="password-message" class="hidden"></div>
+
+                <button type="submit"
+                    class="bg-keolis-blue text-white px-6 py-3 rounded-lg hover:bg-keolis-light transition-colors font-medium">
+                    Changer le mot de passe
+                </button>
+            </form>
+        </section>
+
+    </main>
+
+    <script>
+        // ==================== 2FA ====================
+
+        async function load2FAStatus() {
+            try {
+                const resp = await fetch('/api/auth/2fa/status');
+                const data = await resp.json();
+
+                document.getElementById('2fa-status').classList.add('hidden');
+                document.getElementById('2fa-setup').classList.add('hidden');
+                document.getElementById('2fa-qrcode').classList.add('hidden');
+                document.getElementById('2fa-backup-codes').classList.add('hidden');
+                document.getElementById('2fa-enabled').classList.add('hidden');
+                document.getElementById('2fa-message').classList.add('hidden');
+
+                if (data.totpEnabled) {
+                    document.getElementById('2fa-enabled').classList.remove('hidden');
+                    document.getElementById('backup-codes-remaining').textContent =
+                        `${data.backupCodesRemaining} code(s) de secours restant(s)`;
+                } else {
+                    document.getElementById('2fa-setup').classList.remove('hidden');
+                }
+            } catch (error) {
+                show2FAMessage('Erreur de chargement', 'error');
+            }
+        }
+
+        async function start2FASetup() {
+            try {
+                const resp = await fetch('/api/auth/2fa/setup', { method: 'POST' });
+                const data = await resp.json();
+
+                if (!data.success) {
+                    show2FAMessage(data.error, 'error');
+                    return;
+                }
+
+                document.getElementById('2fa-setup').classList.add('hidden');
+                document.getElementById('2fa-qrcode').classList.remove('hidden');
+                document.getElementById('qr-image').src = data.qrCode;
+                document.getElementById('secret-code').textContent = data.secret;
+                document.getElementById('totp-code').focus();
+            } catch (error) {
+                show2FAMessage('Erreur lors du setup', 'error');
+            }
+        }
+
+        async function confirm2FA() {
+            const code = document.getElementById('totp-code').value.trim();
+            if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+                show2FAMessage('Entrez un code a 6 chiffres', 'error');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/auth/2fa/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await resp.json();
+
+                if (!data.success) {
+                    show2FAMessage(data.error, 'error');
+                    return;
+                }
+
+                // Afficher les codes de secours
+                document.getElementById('2fa-qrcode').classList.add('hidden');
+                document.getElementById('2fa-backup-codes').classList.remove('hidden');
+
+                const list = document.getElementById('backup-codes-list');
+                list.innerHTML = data.backupCodes.map((code, i) =>
+                    `<div class="bg-white px-3 py-2 rounded border text-center">${i + 1}. <strong>${code}</strong></div>`
+                ).join('');
+
+            } catch (error) {
+                show2FAMessage('Erreur lors de la verification', 'error');
+            }
+        }
+
+        async function disable2FA() {
+            const password = document.getElementById('disable-2fa-password').value;
+            if (!password) {
+                show2FAMessage('Entrez votre mot de passe', 'error');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/auth/2fa/disable', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await resp.json();
+
+                if (!data.success) {
+                    show2FAMessage(data.error, 'error');
+                    return;
+                }
+
+                show2FAMessage('2FA desactive avec succes', 'success');
+                document.getElementById('disable-2fa-password').value = '';
+                setTimeout(() => load2FAStatus(), 1500);
+            } catch (error) {
+                show2FAMessage('Erreur lors de la desactivation', 'error');
+            }
+        }
+
+        function show2FAMessage(text, type) {
+            const el = document.getElementById('2fa-message');
+            const cls = type === 'success'
+                ? 'bg-green-100 border-green-500 text-green-800'
+                : 'bg-red-100 border-red-500 text-red-800';
+            el.innerHTML = `<div class="${cls} border-l-4 p-3 rounded"><p class="text-sm font-medium">${text}</p></div>`;
+            el.classList.remove('hidden');
+        }
+
+        // ==================== PASSWORD ====================
+
+        const newPwInput = document.getElementById('new-password');
+        newPwInput.addEventListener('input', () => {
+            const pw = newPwInput.value;
+            updateReq('pw-length', pw.length >= 12);
+            updateReq('pw-upper', /[A-Z]/.test(pw));
+            updateReq('pw-lower', /[a-z]/.test(pw));
+            updateReq('pw-digit', /[0-9]/.test(pw));
+            updateReq('pw-special', /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw));
+        });
+
+        function updateReq(id, valid) {
+            const el = document.getElementById(id);
+            const text = el.textContent.replace(/^[○✓]\s*/, '');
+            if (valid) {
+                el.innerHTML = `<span class="text-green-500">✓</span> ${text}`;
+                el.classList.add('text-green-600');
+            } else {
+                el.innerHTML = `<span class="text-gray-400">○</span> ${text}`;
+                el.classList.remove('text-green-600');
+            }
+        }
+
+        document.getElementById('password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmNewPassword = document.getElementById('confirm-new-password').value;
+
+            if (newPassword !== confirmNewPassword) {
+                showPwMessage('Les mots de passe ne correspondent pas', 'error');
+                return;
+            }
+
+            if (newPassword.length < 12) {
+                showPwMessage('Le mot de passe doit contenir au moins 12 caracteres', 'error');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    showPwMessage('Mot de passe modifie avec succes !', 'success');
+                    document.getElementById('password-form').reset();
+                } else {
+                    showPwMessage(data.error, 'error');
+                }
+            } catch (error) {
+                showPwMessage('Erreur serveur', 'error');
+            }
+        });
+
+        function showPwMessage(text, type) {
+            const el = document.getElementById('password-message');
+            const cls = type === 'success'
+                ? 'bg-green-100 border-green-500 text-green-800'
+                : 'bg-red-100 border-red-500 text-red-800';
+            el.innerHTML = `<div class="${cls} border-l-4 p-3 rounded"><p class="text-sm font-medium">${text}</p></div>`;
+            el.classList.remove('hidden');
+        }
+
+        // ==================== INIT ====================
+        load2FAStatus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nouvelle Réclamation Client</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f5f7;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7;padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#1e3a5f;padding:24px 20px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;">
+                Nouvelle Réclamation Client
+              </h1>
+              <p style="margin:6px 0 0;color:#a8c4e0;font-size:12px;">
+                Reçue via WhatsApp — MessagingMe
+              </p>
+            </td>
+          </tr>
+
+          <!-- Identité client -->
+          <tr>
+            <td style="padding:20px 20px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+                <tr>
+                  <td style="background-color:#eef2f7;padding:12px 20px;border-bottom:1px solid #e2e8f0;">
+                    <h2 style="margin:0;font-size:14px;color:#1e3a5f;text-transform:uppercase;letter-spacing:1px;">
+                      👤 Identité du client
+                    </h2>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="50%" style="padding:6px 10px 6px 0;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Nom</span><br>
+                          <span style="font-size:15px;color:#1f2937;font-weight:600;">{{Last Name}}</span>
+                        </td>
+                        <td width="50%" style="padding:6px 0 6px 10px;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Prénom</span><br>
+                          <span style="font-size:15px;color:#1f2937;font-weight:600;">{{First Name}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="padding:10px 0 6px;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Adresse</span><br>
+                          <span style="font-size:14px;color:#1f2937;">{{adresse}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="padding:6px 0;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Email</span><br>
+                          <a href="mailto:{{Email}}" style="font-size:14px;color:#2563eb;text-decoration:none;">{{Email}}</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Détails incident -->
+          <tr>
+            <td style="padding:16px 20px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+                <tr>
+                  <td style="background-color:#fef3e2;padding:12px 20px;border-bottom:1px solid #e2e8f0;">
+                    <h2 style="margin:0;font-size:14px;color:#92400e;text-transform:uppercase;letter-spacing:1px;">
+                      📍 Détails de l'incident
+                    </h2>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td width="50%" style="padding:6px 10px 6px 0;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Date</span><br>
+                          <span style="font-size:14px;color:#1f2937;font-weight:600;">{{date incident}}</span>
+                        </td>
+                        <td width="50%" style="padding:6px 0 6px 10px;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Heure</span><br>
+                          <span style="font-size:14px;color:#1f2937;font-weight:600;">{{heure incident}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td width="50%" style="padding:10px 10px 6px 0;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Ligne</span><br>
+                          <span style="display:inline-block;margin-top:4px;padding:4px 14px;background-color:#1e3a5f;color:#ffffff;border-radius:20px;font-size:14px;font-weight:700;">{{Ligne incident}}</span>
+                        </td>
+                        <td width="50%" style="padding:10px 0 6px 10px;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Direction</span><br>
+                          <span style="font-size:14px;color:#1f2937;">{{direction incident}}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td width="50%" style="padding:10px 10px 6px 0;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Arrêt</span><br>
+                          <span style="font-size:14px;color:#1f2937;">{{arret incident}}</span>
+                        </td>
+                        <td width="50%" style="padding:10px 0 6px 10px;vertical-align:top;">
+                          <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Commune</span><br>
+                          <span style="font-size:14px;color:#1f2937;">{{commune incident}}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Motif et description -->
+          <tr>
+            <td style="padding:16px 20px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;">
+                <tr>
+                  <td style="background-color:#fde8e8;padding:12px 20px;border-bottom:1px solid #e2e8f0;">
+                    <h2 style="margin:0;font-size:14px;color:#991b1b;text-transform:uppercase;letter-spacing:1px;">
+                      ⚠️ Réclamation
+                    </h2>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px;">
+                    <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Motif</span><br>
+                    <span style="display:inline-block;margin-top:4px;padding:5px 16px;background-color:#fef2f2;border:1px solid #fca5a5;border-radius:4px;font-size:14px;color:#991b1b;font-weight:600;">{{motif incident}}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 20px 20px;">
+                    <span style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Description détaillée</span>
+                    <div style="margin-top:8px;padding:16px;background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;border-left:4px solid #1e3a5f;">
+                      <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">{{detail incident}}</p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 20px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.5;">
+                Ce message a été généré automatiquement suite à une réclamation<br>
+                reçue via le chatbot WhatsApp — Keolis Auxerre
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

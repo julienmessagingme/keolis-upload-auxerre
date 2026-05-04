@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/favicon2.png">
     <title>Enquêtes Qualité - Plateforme Keolis Auxerre</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -71,9 +72,10 @@
                 <!-- Period Buttons -->
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-semibold text-gray-600 mr-1">Période :</span>
-                    <button id="period-7" class="period-btn bg-keolis-blue text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('7')">7j</button>
+                    <button id="period-7" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('7')">7j</button>
                     <button id="period-30" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('30')">30j</button>
-                    <button id="period-90" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('90')">90j</button>
+                    <button id="period-90" class="period-btn bg-keolis-blue text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('90')">90j</button>
+                    <button id="period-all" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('all')">Tout</button>
                     <button id="period-custom" class="period-btn bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg font-semibold transition-colors text-sm" onclick="setPeriod('custom')">Personnalisé</button>
                 </div>
 
@@ -247,7 +249,7 @@
 
     <script>
         // State
-        let currentPeriod = '7';
+        let currentPeriod = '90';
         let customStartDate = null;
         let customEndDate = null;
         let selectedRatings = [];
@@ -266,6 +268,9 @@
             if (currentPeriod === 'custom') {
                 startDate = customStartDate;
                 endDate = customEndDate;
+            } else if (currentPeriod === 'all') {
+                startDate = null;
+                endDate = null;
             } else {
                 const days = parseInt(currentPeriod);
                 startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -286,9 +291,18 @@
         }
 
         // === API Calls ===
+        function handleAuthError(res) {
+            if (res.status === 401) {
+                window.location.href = '/login.html';
+                return true;
+            }
+            return false;
+        }
+
         async function loadStats() {
             try {
                 const res = await fetch(`/api/surveys/stats?${buildQueryParams()}`);
+                if (handleAuthError(res)) return;
                 const data = await res.json();
                 if (data.success) {
                     updateStatCards(data);
@@ -302,6 +316,7 @@
         async function loadHistory() {
             try {
                 const res = await fetch(`/api/surveys/history?${buildQueryParams({ page: currentPage, limit: ITEMS_PER_PAGE })}`);
+                if (handleAuthError(res)) return;
                 const data = await res.json();
                 if (data.success) {
                     updateTable(data);
@@ -445,14 +460,19 @@
 
             totalBadge.textContent = data.total + ' résultat' + (data.total > 1 ? 's' : '');
 
+            // Always show the table section
+            tableSection.classList.remove('hidden');
+
             if (data.items.length === 0) {
                 emptyState.classList.remove('hidden');
-                tableSection.classList.add('hidden');
+                tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400 italic">Aucune réponse sur cette période</td></tr>';
+                document.getElementById('pageInfo').textContent = 'Page 1 sur 1 (0 résultats)';
+                document.getElementById('btnPrev').disabled = true;
+                document.getElementById('btnNext').disabled = true;
                 return;
             }
 
             emptyState.classList.add('hidden');
-            tableSection.classList.remove('hidden');
 
             tbody.innerHTML = data.items.map(item => {
                 const date = new Date(item.receivedAt).toLocaleString('fr-FR', {
@@ -565,7 +585,7 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', () => {
-            setPeriod('7');
+            setPeriod('90');
         });
     </script>
 </body>

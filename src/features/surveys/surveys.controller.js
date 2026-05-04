@@ -1,15 +1,24 @@
+const crypto = require('crypto');
 const surveysService = require('./surveys.service');
 
 class SurveysController {
   /**
    * POST /api/surveys/webhook?token=xxx
+   * Comparaison timing-safe pour eviter les attaques par timing
    */
   webhook(req, res) {
     try {
-      const token = req.query.token;
-      const expectedToken = process.env.SURVEY_WEBHOOK_TOKEN;
+      const token = req.query.token || '';
+      const expectedToken = process.env.SURVEY_WEBHOOK_TOKEN || '';
 
-      if (!expectedToken || token !== expectedToken) {
+      // Comparaison a temps constant (anti timing attack)
+      const tokenBuf = Buffer.from(token);
+      const expectedBuf = Buffer.from(expectedToken);
+      const isValid = expectedToken.length > 0
+        && tokenBuf.length === expectedBuf.length
+        && crypto.timingSafeEqual(tokenBuf, expectedBuf);
+
+      if (!isValid) {
         return res.status(401).json({ success: false, error: 'Token invalide' });
       }
 
@@ -31,8 +40,8 @@ class SurveysController {
    */
   getStats(req, res) {
     try {
-      const { startDate, endDate } = req.query;
-      const stats = surveysService.getStats({ startDate, endDate });
+      const { startDate, endDate, ratings } = req.query;
+      const stats = surveysService.getStats({ startDate, endDate, ratings });
       return res.json({ success: true, ...stats });
     } catch (error) {
       console.error('Erreur stats surveys:', error);
@@ -47,8 +56,8 @@ class SurveysController {
     try {
       const { page = 1, limit = 50, startDate, endDate, ratings } = req.query;
       const result = surveysService.getHistory({
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: Math.max(1, parseInt(page) || 1),
+        limit: Math.min(Math.max(1, parseInt(limit) || 50), 200),
         startDate, endDate, ratings
       });
       return res.json({ success: true, ...result });
