@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - Keolis Auxerre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { 'keolis-blue': '#003366', 'keolis-light': '#0066cc' } } }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-keolis-blue to-keolis-light min-h-screen">
+    <!-- Navbar (charte identique aux autres pages, Stats actif) -->
+    <nav class="bg-keolis-blue shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white rounded-lg p-1.5 flex items-center justify-center">
+                        <img src="https://f003.backblazeb2.com/file/auxerre/Capture+d'%C3%A9cran+2026-02-04+171543.png" alt="Messaging Me" class="w-full h-full object-contain">
+                    </div>
+                    <span class="text-white text-xl font-bold">Plateforme Keolis Auxerre</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="/news.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">News</a>
+                    <a href="/index.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">Fiches Horaires</a>
+                    <a href="/knowledge.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">Base de Connaissances</a>
+                    <a href="/surveys.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                        Enquêtes Qualité
+                    </a>
+                    <a href="/stats.html" class="text-white bg-white bg-opacity-20 px-4 py-2 rounded-lg font-semibold hover:bg-opacity-30 transition-all flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        Stats
+                    </a>
+                    <a href="/admin.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        Administration
+                    </a>
+                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        Déconnexion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header + filtre periode -->
+        <div class="bg-white rounded-2xl shadow-2xl p-6 mb-6">
+            <h1 class="text-2xl font-bold text-keolis-blue mb-4">Stats — Custom events MessagingMe</h1>
+            <p class="text-gray-600 mb-4 text-sm">Volumetrie journaliere de chaque custom event MessagingMe Auxerre. Cliquez sur un event pour voir le chart par jour.</p>
+            <div class="flex items-end gap-3 flex-wrap">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Du</label>
+                    <input id="dateFrom" type="date" class="border rounded-lg px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Au</label>
+                    <input id="dateTo" type="date" class="border rounded-lg px-3 py-2">
+                </div>
+                <button onclick="setPreset(7)" class="border border-keolis-blue text-keolis-blue px-4 py-2 rounded-lg hover:bg-keolis-blue hover:text-white transition-all">7j</button>
+                <button onclick="setPreset(30)" class="border border-keolis-blue text-keolis-blue px-4 py-2 rounded-lg hover:bg-keolis-blue hover:text-white transition-all">30j</button>
+                <button onclick="setPreset(90)" class="border border-keolis-blue text-keolis-blue px-4 py-2 rounded-lg hover:bg-keolis-blue hover:text-white transition-all">90j</button>
+                <button onclick="loadStats()" class="bg-keolis-blue hover:bg-keolis-light text-white px-4 py-2 rounded-lg font-semibold transition-colors">Charger</button>
+            </div>
+        </div>
+
+        <!-- Liste accordeons -->
+        <div id="eventsContainer" class="space-y-2">
+            <div class="text-white text-center py-8">Chargement…</div>
+        </div>
+
+        <!-- Footer : last sync + bouton resync (admin only) -->
+        <div class="mt-6 bg-white rounded-2xl shadow-2xl p-4 flex items-center justify-between text-sm">
+            <span id="lastSyncLabel" class="text-gray-600">Dernier sync : —</span>
+            <button id="resyncBtn" onclick="manualResync()" class="text-keolis-blue hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed" disabled>↻ Resync manuel</button>
+        </div>
+    </div>
+
+    <script>
+        const charts = {}; // event_ns -> Chart instance (cache pour eviter de relancer le fetch quand on replie/redeplie)
+
+        function setPreset(days) {
+            const to = new Date();
+            const from = new Date(); from.setDate(from.getDate() - days + 1);
+            document.getElementById('dateFrom').value = from.toISOString().slice(0, 10);
+            document.getElementById('dateTo').value = to.toISOString().slice(0, 10);
+            loadStats();
+        }
+
+        async function loadStats() {
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+            if (!from || !to) return;
+
+            // Vider le cache des charts (les charts dependent de la periode)
+            Object.values(charts).forEach(c => c.destroy());
+            for (const k of Object.keys(charts)) delete charts[k];
+
+            const c = document.getElementById('eventsContainer');
+            c.innerHTML = '<div class="text-white text-center py-8">Chargement…</div>';
+
+            try {
+                const r = await fetch(`/api/stats/custom-events?from=${from}&to=${to}`);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const j = await r.json();
+                renderEvents(j.events || [], from, to);
+                renderSyncStatus(j.syncs || []);
+            } catch (err) {
+                c.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-lg">Erreur : ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        function renderEvents(events, from, to) {
+            const c = document.getElementById('eventsContainer');
+            if (events.length === 0) {
+                c.innerHTML = '<div class="bg-white rounded-2xl shadow-2xl p-6 text-center text-gray-600">Aucun custom event MessagingMe pour Auxerre. Le sync nocturne tourne a 22h, ou cliquez sur Resync manuel si vous etes admin.</div>';
+                return;
+            }
+            c.innerHTML = events.map(ev => `
+                <details class="bg-white rounded-2xl shadow-2xl overflow-hidden" data-event-ns="${escapeAttr(ev.event_ns)}">
+                    <summary class="px-6 py-4 cursor-pointer flex items-center justify-between hover:bg-gray-50">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-keolis-blue truncate">${escapeHtml(ev.name)}</div>
+                            ${ev.description ? `<div class="text-sm text-gray-600 truncate">${escapeHtml(ev.description)}</div>` : ''}
+                        </div>
+                        <div class="text-keolis-blue font-semibold text-lg ml-4">${ev.count}</div>
+                    </summary>
+                    <div class="px-6 pb-6 pt-2">
+                        <canvas height="80"></canvas>
+                    </div>
+                </details>
+            `).join('');
+
+            // Bind expand handler pour charger le chart au premier ouverture
+            c.querySelectorAll('details').forEach((d) => {
+                d.addEventListener('toggle', () => {
+                    if (d.open) {
+                        const eventNs = d.dataset.eventNs;
+                        const canvas = d.querySelector('canvas');
+                        loadDailyChart(eventNs, canvas, from, to);
+                    }
+                });
+            });
+        }
+
+        async function loadDailyChart(eventNs, canvas, from, to) {
+            if (charts[eventNs]) return; // already loaded
+            try {
+                const r = await fetch(`/api/stats/custom-events/${encodeURIComponent(eventNs)}/daily?from=${from}&to=${to}`);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const j = await r.json();
+                charts[eventNs] = new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: j.series.map(s => s.day),
+                        datasets: [{ label: 'Occurrences', data: j.series.map(s => s.count), backgroundColor: '#003366' }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            } catch (err) {
+                canvas.parentElement.innerHTML = `<div class="text-red-600 text-sm">Erreur chargement chart : ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        function renderSyncStatus(syncs) {
+            const lastSync = syncs.reduce((acc, s) => {
+                if (!s.last_run_at) return acc;
+                if (!acc || s.last_run_at > acc) return s.last_run_at;
+                return acc;
+            }, null);
+            const errors = syncs.filter(s => s.last_run_status === 'error').length;
+            const lbl = lastSync
+                ? `Dernier sync : ${new Date(lastSync).toLocaleString('fr-FR')}${errors ? ` ⚠️ ${errors} erreur${errors > 1 ? 's' : ''}` : ''}`
+                : 'Dernier sync : jamais';
+            document.getElementById('lastSyncLabel').textContent = lbl;
+        }
+
+        async function manualResync() {
+            const btn = document.getElementById('resyncBtn');
+            btn.disabled = true;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Sync en cours…';
+            try {
+                const r = await fetch('/api/stats/admin/sync', { method: 'POST' });
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                btn.textContent = '✓ Sync OK, rechargement…';
+                setTimeout(() => { loadStats(); btn.textContent = originalText; btn.disabled = false; }, 1000);
+            } catch (err) {
+                btn.textContent = `Erreur : ${err.message}`;
+                setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 3000);
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+        }
+        function escapeAttr(s) { return escapeHtml(s); }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        // Activer le bouton resync seulement pour les admins
+        fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(u => {
+            if (u && u.role === 'admin') {
+                document.getElementById('resyncBtn').disabled = false;
+            }
+        }).catch(() => {});
+
+        // Init : charger 30 derniers jours
+        setPreset(30);
+    </script>
+</body>
+</html>
