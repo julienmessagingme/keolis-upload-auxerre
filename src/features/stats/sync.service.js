@@ -53,7 +53,7 @@ async function syncAuxerre() {
     try {
       const inserted = await syncEventOccurrences(sb, client, ev.event_ns);
       result.occurrences += inserted;
-      await sb.from('mm_sync_state').upsert(
+      const { error: stateErr } = await sb.from('mm_sync_state').upsert(
         {
           school_slug: SCHOOL_SLUG,
           event_ns: ev.event_ns,
@@ -63,13 +63,19 @@ async function syncAuxerre() {
         },
         { onConflict: 'school_slug,event_ns' }
       );
+      if (stateErr) {
+        console.error(JSON.stringify({
+          level: 'warn', msg: 'mm_sync_state success update failed',
+          event_ns: ev.event_ns, err: stateErr.message,
+        }));
+      }
     } catch (err) {
       result.errors++;
       console.error(JSON.stringify({
         level: 'error', msg: 'sync event failed',
         event_ns: ev.event_ns, err: err.message,
       }));
-      await sb.from('mm_sync_state').upsert(
+      const { error: stateErr } = await sb.from('mm_sync_state').upsert(
         {
           school_slug: SCHOOL_SLUG,
           event_ns: ev.event_ns,
@@ -79,6 +85,12 @@ async function syncAuxerre() {
         },
         { onConflict: 'school_slug,event_ns' }
       );
+      if (stateErr) {
+        console.error(JSON.stringify({
+          level: 'warn', msg: 'mm_sync_state error update failed',
+          event_ns: ev.event_ns, err: stateErr.message,
+        }));
+      }
     }
   }
 
@@ -110,9 +122,9 @@ async function syncEventOccurrences(sb, client, eventNs) {
       event_ns: eventNs,
       user_ns: o.user_ns ?? null,
       text_value: o.text_value ?? null,
-      price_value: o.price_value != null ? Number(o.price_value) : null,
-      number_value: o.number_value != null ? Number(o.number_value) : null,
-      occurred_at: o.occurred_at,
+      price_value: parseNumeric(o.price_value),
+      number_value: parseNumeric(o.number_value),
+      occurred_at: o.created_at, // L'API MessagingMe nomme ce champ created_at
     }));
 
     const { error } = await sb.from('mm_occurrences').upsert(rows, {
@@ -142,6 +154,17 @@ async function syncEventOccurrences(sb, client, eventNs) {
   }
 
   return inserted;
+}
+
+/**
+ * Parse une valeur numerique tolerante : null/undefined/'' -> null,
+ * non-numerique -> null, sinon Number(v).
+ * Evite les Number("") = 0 et les NaN qui font echouer l'upsert Supabase.
+ */
+function parseNumeric(v) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 module.exports = { syncAuxerre, SCHOOL_SLUG };
