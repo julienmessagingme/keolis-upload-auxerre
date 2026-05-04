@@ -1,38 +1,39 @@
 # Work in progress
 
-## 2026-05-04 — Module Stats + Mes tableaux
+## 2026-05-04 — Mes tableaux (Plan 2)
 
-**Statut** : architecture validee avec Julien, plan detaille a rediger ensuite, code pas encore commence.
+**Statut** : pas encore commence. Plan detaille a rediger.
 
-### Decisions prises
-- DB : projet Supabase partage avec EDH, `school_slug = "auxerre"`. Tables reutilisees : `mm_events`, `mm_occurrences`, `mm_sync_state`, `dashboards`, `dashboard_steps`, `dashboard_step_refs`. Nouvelle table dediee `auxerre_users` (user mapping) + drop FK stricte sur `dashboards.created_by`.
-- EDH ne doit JAMAIS afficher Auxerre — garanti par sa constante `SCHOOLS` hardcodee qui ne contient pas `auxerre`. **Ne jamais ajouter `auxerre` a [SCHOOLS](../EDH/src/lib/schools.ts).**
-- Auth : la table `users` Supabase reste 100% EDH (collision d'email evitee via table `auxerre_users` separee).
-- Pas de RLS — securite cote code Express (middleware `requireAuth` + hardcode `school_slug` et `created_by` cote serveur, frontend ne touche jamais Supabase directement).
-- MessagingMe : bearer token Auxerre dans `MM_TOKEN_AUXERRE` (.env VPS), base API `https://ai.messagingme.app/api`. Sync nocturne via `node-cron` interne au process (pattern EDH `0 22 * * *`), + endpoint admin manuel + endpoint cron-bearer fallback.
-- Drag & drop : EDH utilise `@dnd-kit` (React-only). Auxerre HTML statique → on utilise **SortableJS** (vanilla, meme UX).
-- Charts : Chart.js (CDN, deja utilise sur surveys.html).
-- Look : charte Keolis bleu existante conservee (palette `keolis-blue`/`keolis-light`, navbar sticky, cards `bg-white rounded-2xl shadow-2xl`).
+Le module Stats est livre (cf. plus bas). Reste a ajouter le builder de tableaux personnels (funnels drag-and-drop), reutilisant les memes events MessagingMe que Stats.
 
-### Phases prevues
-1. Setup Supabase + sync MessagingMe (backend)
-2. Sync user Auxerre → table `auxerre_users` au login
-3. API Stats (custom-events list, daily series)
-4. API Mes tableaux (CRUD dashboards/steps/refs)
-5. UI : ajout onglet Stats dans toutes les navbars existantes
-6. Page `stats.html` (custom events + chart journalier)
-7. Page `dashboards.html` (mes tableaux + drag&drop SortableJS)
-8. Test end-to-end + deploy via GitHub Actions
+### Decisions deja prises (architecture)
+- Tables Supabase deja en place (cf. EDH `dashboards`, `dashboard_steps`, `dashboard_step_refs`). Migration `auxerre_users` + drop FK `dashboards.created_by` deja appliquee par Julien.
+- `created_by = req.session.user.userUuid` cote Express (mappe au login dans la table `auxerre_users`).
+- Pas d'URLs trackees comme EDH — palette uniquement custom events MessagingMe.
+- Drag & drop : SortableJS (vanilla, meme UX que `@dnd-kit` d'EDH).
+- Look : charte Keolis bleu identique.
 
-### Reste a faire avant d'attaquer le code
-- [ ] Rediger le plan d'implementation detaille (skill `writing-plans`) dans `docs/plans/2026-05-04-auxerre-stats-implementation.md`
-- [ ] Recuperer `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` depuis le conteneur EDH (`docker exec edh-app env | grep SUPABASE`)
-- [ ] Generer un `INTERNAL_API_KEY` random hex 64
-- [ ] Ajouter ces 5 vars au `.env` du VPS Auxerre
+### Reste a faire
+- [ ] Rediger le plan d'implementation detaille `docs/plans/2026-05-XX-auxerre-dashboards-implementation.md`
+- [ ] Implementer (apres validation du plan par Julien)
 
-## 2026-05-04 — Regularisation infra (TERMINE)
+---
 
-Ce qu'on a fait dans cette session avant d'attaquer la feature stats :
+## 2026-05-04 — Module Stats (LIVRE)
+
+Module Stats deploye en prod le 2026-05-04. Plan d'execution dans [docs/plans/2026-05-04-auxerre-stats-implementation.md](docs/plans/2026-05-04-auxerre-stats-implementation.md). 12 tasks, ~14 commits, 4 bugs corriges en code review (occurred_at field mapping, parseNumeric NaN, WebSocket Node 20, bornes UTC DST).
+
+Fonctionnel :
+- Sync nocturne MessagingMe → Supabase a 22h Europe/Paris (node-cron interne au process)
+- Endpoint admin resync manuel + endpoint cron-bearer fallback
+- Page `/stats.html` : filtre periode, accordeons par event, charts Chart.js journaliers
+- Onglet « Stats » dans la navbar des 5 pages existantes
+
+Premier sync prod : 16 events + 76 occurrences. Idempotence verifiee. 0 timestamp NULL.
+
+## 2026-05-04 — Regularisation infra (LIVRE)
+
+Avant d'attaquer Stats, reorganise l'infra :
 
 - Le repo GitHub `keolis-upload-auxerre` ne contenait qu'un sous-ensemble de 13 fichiers (juste la feature surveys). Le projet complet vivait sur le VPS, non versionne. Probleme : impossible d'avoir un workflow git propre.
 - Rapatrie l'integralite du projet VPS dans le repo via `tar` over SSH (en excluant `.env`, `node_modules`, `data/`, fichiers Windows pourris).

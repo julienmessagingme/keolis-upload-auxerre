@@ -27,14 +27,12 @@ Page `/surveys.html`. Recoit en webhook depuis MessagingMe les reponses 1-5 etoi
 ### Administration
 Page `/admin.html` (admin only). Gestion des utilisateurs : inviter, lister, changer role, supprimer. Nettoyage des invitations expirees.
 
+### Stats
+Page `/stats.html`. Volumetrie journaliere de chaque custom event MessagingMe Auxerre. Filtre periode (7j/30j/90j ou date custom), liste accordeons par event, chart bar journalier au depliement. Sync nocturne automatique a 22h + bouton resync manuel pour les admins. Hebergement DB : Supabase, projet partage avec EDH (`school_slug = "auxerre"`, isolation par construction — EDH n'a pas `auxerre` dans sa constante SCHOOLS).
+
 ## En cours de developpement
 
-### Stats + Mes tableaux
-Inspire de la plateforme EDH, ajoute deux modules :
+### Mes tableaux
+Inspire de la plateforme EDH. Chaque utilisateur cree ses propres funnels, drag-and-drop d'events MessagingMe vers des etapes ordonnees. Chaque etape peut cumuler plusieurs events (volumes sommes). Persiste, prive par user (mappe via `auxerre_users` Supabase), viz bar chart. Pas d'URLs trackees comme EDH, uniquement custom events MessagingMe. Plan d'implementation a rediger.
 
-- **Stats** : volumetrie journaliere de chaque custom event MessagingMe. Filtre periode (7j/30j/90j ou date custom), liste accordeons par event, chart bar journalier. Sync incremental nocturne + bouton resync manuel.
-- **Mes tableaux** : chaque utilisateur cree ses propres funnels, drag-and-drop d'events vers des etapes ordonnees. Chaque etape peut cumuler plusieurs events (volumes sommes). Persiste, prive par user, viz bar chart. Pas d'URLs trackees comme EDH, uniquement custom events MessagingMe.
-
-Hebergement DB : Supabase, projet partage avec EDH (`school_slug = "auxerre"`). EDH n'a pas `auxerre` dans sa constante SCHOOLS, donc aveugle a Auxerre.
-
-Voir [wip.md](wip.md) pour l'etat d'avancement et [docs/plans/2026-05-04-auxerre-stats-implementation.md](docs/plans/) (a venir) pour le plan detaille.
+Voir [wip.md](wip.md) pour l'etat d'avancement.
