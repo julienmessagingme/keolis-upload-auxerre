@@ -98,9 +98,15 @@
                 </div>
             </div>
 
-            <!-- Viz funnel -->
+            <!-- Viz funnel + histogramme -->
             <div id="vizContainer" class="hidden bg-white rounded-2xl shadow-2xl p-6 mt-6">
-                <h3 class="font-bold text-keolis-blue mb-3">Visualisation (30 derniers jours)</h3>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-keolis-blue">Visualisation (30 derniers jours)</h3>
+                    <div class="inline-flex border border-keolis-blue rounded-lg overflow-hidden text-sm">
+                        <button id="vizModeFunnel" onclick="setVizMode('funnel')" class="px-3 py-1 bg-keolis-blue text-white">Entonnoir</button>
+                        <button id="vizModeHistogram" onclick="setVizMode('histogram')" class="px-3 py-1 text-keolis-blue hover:bg-gray-100">Histogramme</button>
+                    </div>
+                </div>
                 <canvas id="funnelChart" height="120"></canvas>
             </div>
         </div>
@@ -110,6 +116,7 @@
         let currentDashboard = null;
         let availableEvents = [];
         let funnelChart = null;
+        let vizMode = 'funnel'; // 'funnel' (bar horizontal) | 'histogram' (bar vertical)
 
         // ========== LISTE ==========
 
@@ -352,6 +359,16 @@
                     const j = await r.json().catch(() => ({}));
                     throw new Error(j.error || `HTTP ${r.status}`);
                 }
+                // Re-sync DOM avec l'etat canonique du serveur (steps deduplicates,
+                // labels normalises, etc.). Evite que le DOM montre une valeur
+                // differente de ce qui est en DB.
+                const refreshed = await fetch(`/api/dashboards/${encodeURIComponent(currentDashboard.id)}`);
+                if (refreshed.ok) {
+                    const { dashboard } = await refreshed.json();
+                    currentDashboard = dashboard;
+                    document.getElementById('builderName').value = dashboard.name;
+                    renderSteps(dashboard.steps || []);
+                }
                 btn.textContent = '✓ Enregistré';
                 await refreshViz();
                 setTimeout(() => { btn.textContent = 'Enregistrer'; btn.disabled = false; }, 2000);
@@ -360,6 +377,17 @@
                 btn.textContent = 'Enregistrer';
                 btn.disabled = false;
             }
+        }
+
+        function setVizMode(mode) {
+            vizMode = mode;
+            document.getElementById('vizModeFunnel').className = mode === 'funnel'
+                ? 'px-3 py-1 bg-keolis-blue text-white'
+                : 'px-3 py-1 text-keolis-blue hover:bg-gray-100';
+            document.getElementById('vizModeHistogram').className = mode === 'histogram'
+                ? 'px-3 py-1 bg-keolis-blue text-white'
+                : 'px-3 py-1 text-keolis-blue hover:bg-gray-100';
+            refreshViz();
         }
 
         // ========== VIZ ==========
@@ -386,21 +414,26 @@
 
             if (funnelChart) funnelChart.destroy();
             const ctx = document.getElementById('funnelChart').getContext('2d');
+            const labels = stepsWithRefs.map((s) => s.label || s.refs.map((r) => r.label).join(' + '));
+            const totals = stepsWithRefs.map((s) => s.total);
+            const isFunnel = vizMode === 'funnel';
             funnelChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: stepsWithRefs.map((s) => s.label || s.refs.map((r) => r.label).join(' + ')),
+                    labels,
                     datasets: [{
                         label: `Volumes (${fromStr} → ${toStr})`,
-                        data: stepsWithRefs.map((s) => s.total),
+                        data: totals,
                         backgroundColor: '#003366',
                     }],
                 },
                 options: {
                     responsive: true,
-                    indexAxis: 'y',
+                    indexAxis: isFunnel ? 'y' : 'x', // funnel = bar horizontal, histogram = bar vertical
                     plugins: { legend: { display: true, position: 'top' } },
-                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+                    scales: isFunnel
+                        ? { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                        : { y: { beginAtZero: true, ticks: { precision: 0 } } },
                 },
             });
         }
