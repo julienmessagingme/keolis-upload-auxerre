@@ -61,6 +61,14 @@ async function startServer() {
       console.log(`\n✨ Prêt à recevoir des requêtes!\n`);
     });
 
+    // Démarrer le cron de sync stats (apres le listen pour ne pas bloquer le boot)
+    if (process.env.SUPABASE_URL && process.env.MM_TOKEN_AUXERRE) {
+      const { startStatsCron } = require('./features/stats/cron');
+      startStatsCron();
+    } else {
+      console.warn('⚠️  Stats cron non demarre : SUPABASE_URL ou MM_TOKEN_AUXERRE manquant');
+    }
+
   } catch (error) {
     console.error('❌ Erreur fatale lors du démarrage du serveur:', error);
     process.exit(1);

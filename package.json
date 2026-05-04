@@ -27,6 +27,7 @@
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "nodemailer": "^7.0.12",
     "openai": "^6.16.0",
     "otplib": "^13.3.0",
