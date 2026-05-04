@@ -13,6 +13,7 @@ const newsFeature = require('./features/news');
 const knowledgeFeature = require('./features/knowledge');
 const surveysFeature = require('./features/surveys');
 const statsFeature = require('./features/stats');
+const dashboardsFeature = require('./features/dashboards');
 
 // Initialiser la base de données
 config.database.initialize();
@@ -144,6 +145,9 @@ function createApp() {
   // Routes des stats custom events MessagingMe (/api/stats/*)
   app.use('/api/stats', statsFeature.routes);
 
+  // Routes des tableaux personnels (/api/dashboards/*)
+  app.use('/api/dashboards', dashboardsFeature.routes);
+
   // =========== ROUTES DES PAGES PROTÉGÉES ===========
 
   // Route pour l'accueil - PROTÉGÉE
@@ -171,6 +175,10 @@ function createApp() {
 
   app.get('/stats.html', middleware.requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'public', 'stats.html'));
+  });
+
+  app.get('/dashboards.html', middleware.requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'dashboards.html'));
   });
 
   // Route pour l'admin - ADMIN SEULEMENT
