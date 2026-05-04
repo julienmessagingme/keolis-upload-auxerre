@@ -332,7 +332,13 @@
             if (!currentDashboard) return;
             const name = document.getElementById('builderName').value.trim();
             if (!name) { alert('Le nom est requis'); return; }
-            const steps = collectStepsFromDOM().filter((s) => s.refs.length > 0);
+            const allSteps = collectStepsFromDOM();
+            const emptyCount = allSteps.filter((s) => s.refs.length === 0).length;
+            if (emptyCount > 0) {
+                const ok = confirm(`${emptyCount} étape${emptyCount > 1 ? 's sont vides et seront supprimées' : ' est vide et sera supprimée'} à l'enregistrement. Continuer ?`);
+                if (!ok) return;
+            }
+            const steps = allSteps.filter((s) => s.refs.length > 0);
             const btn = document.getElementById('saveBtn');
             btn.disabled = true;
             btn.textContent = '⏳ Enregistrement…';

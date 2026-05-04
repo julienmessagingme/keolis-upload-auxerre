@@ -96,11 +96,12 @@ async function getDashboardWithSteps(userUuid, dashboardId) {
 async function updateDashboard(userUuid, dashboardId, patch) {
   const sb = getSupabase();
 
-  const { data: dash } = await sb
+  const { data: dash, error: ownErr } = await sb
     .from('dashboards')
     .select('id, created_by, school_slug')
     .eq('id', dashboardId)
     .maybeSingle();
+  if (ownErr) throw new Error(`updateDashboard ownership check: ${ownErr.message}`);
   if (!dash || dash.created_by !== userUuid || dash.school_slug !== SCHOOL_SLUG) {
     throw Object.assign(new Error('not found'), { status: 404 });
   }
@@ -136,6 +137,26 @@ async function updateDashboard(userUuid, dashboardId, patch) {
       }
     }
 
+    // Validation cross-tenant : tous les event_ns doivent appartenir a Auxerre.
+    // Empeche de poller un event_ns d'EDH meme si l'API ne renverra pas de data
+    // (compute renvoie '(indisponible)' pour les event_ns inconnus, mais ca
+    // pollue quand meme dashboard_step_refs).
+    const allEventNs = Array.from(new Set(patch.steps.flatMap((s) => s.refs.map((r) => r.event_ns))));
+    const { data: validEvents, error: valErr } = await sb
+      .from('mm_events')
+      .select('event_ns')
+      .eq('school_slug', SCHOOL_SLUG)
+      .in('event_ns', allEventNs);
+    if (valErr) throw new Error(`updateDashboard validate event_ns: ${valErr.message}`);
+    const validSet = new Set((validEvents || []).map((e) => e.event_ns));
+    const invalid = allEventNs.filter((ns) => !validSet.has(ns));
+    if (invalid.length > 0) {
+      throw Object.assign(
+        new Error(`event_ns invalide(s) : ${invalid.slice(0, 3).join(', ')}${invalid.length > 3 ? '…' : ''}`),
+        { status: 400 }
+      );
+    }
+
     const { error: delErr } = await sb.from('dashboard_steps').delete().eq('dashboard_id', dashboardId);
     if (delErr) throw new Error(`delete steps: ${delErr.message}`);
 
@@ -163,11 +184,12 @@ async function updateDashboard(userUuid, dashboardId, patch) {
 
 async function deleteDashboard(userUuid, dashboardId) {
   const sb = getSupabase();
-  const { data: dash } = await sb
+  const { data: dash, error: ownErr } = await sb
     .from('dashboards')
     .select('id, created_by, school_slug')
     .eq('id', dashboardId)
     .maybeSingle();
+  if (ownErr) throw new Error(`deleteDashboard ownership check: ${ownErr.message}`);
   if (!dash || dash.created_by !== userUuid || dash.school_slug !== SCHOOL_SLUG) {
     throw Object.assign(new Error('not found'), { status: 404 });
   }
@@ -183,11 +205,12 @@ async function deleteDashboard(userUuid, dashboardId) {
 async function computeDashboardData(userUuid, dashboardId, fromDate, toDate) {
   const sb = getSupabase();
 
-  const { data: dash } = await sb
+  const { data: dash, error: ownErr } = await sb
     .from('dashboards')
     .select('id, created_by, school_slug')
     .eq('id', dashboardId)
     .maybeSingle();
+  if (ownErr) throw new Error(`computeDashboardData ownership check: ${ownErr.message}`);
   if (!dash || dash.created_by !== userUuid || dash.school_slug !== SCHOOL_SLUG) {
     throw Object.assign(new Error('not found'), { status: 404 });
   }

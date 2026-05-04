@@ -105,7 +105,7 @@ function createApp() {
 
   // Log des actions sensibles (mutations API) pour tracabilite
   app.use('/api', (req, res, next) => {
-    if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
       const user = req.session?.user?.email || 'anonymous';
       const ip = req.ip;
       console.log(`[AUDIT] ${new Date().toISOString()} | ${req.method} ${req.originalUrl} | user=${user} | ip=${ip}`);
