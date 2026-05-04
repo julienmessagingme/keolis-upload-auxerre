@@ -39,6 +39,13 @@ router.post(
 
 // ==================== ROUTES AUTHENTIFIEES ====================
 
+// User courant (pour activer/desactiver les boutons admin-only cote frontend)
+router.get(
+  '/me',
+  middleware.requireAuth,
+  (req, res) => authController.me(req, res)
+);
+
 // Changement de mot de passe (tout utilisateur connecte)
 router.post(
   '/change-password',

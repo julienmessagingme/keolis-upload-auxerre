@@ -251,6 +251,16 @@ class AuthController {
   }
 
   /**
+   * GET /api/auth/me - Retourne le user de la session courante (id/email/role).
+   * Utilise cote frontend pour activer/desactiver les boutons admin-only.
+   * Le middleware requireAuth garantit que req.session.user est present ici.
+   */
+  me(req, res) {
+    const { id, email, role } = req.session.user;
+    return res.json({ id, email, role });
+  }
+
+  /**
    * POST /api/auth/verify-token - Verifie un token d'invitation
    */
   verifyToken(req, res) {
