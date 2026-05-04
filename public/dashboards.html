@@ -118,6 +118,32 @@
         let histChart = null;
         let vizMode = 'funnel';
         let lastVizData = null;
+        let isDirty = false; // modifications en attente non sauvegardees ?
+
+        function markDirty() {
+            if (isDirty) return;
+            isDirty = true;
+            const btn = document.getElementById('saveBtn');
+            btn.classList.remove('bg-keolis-blue', 'hover:bg-keolis-light');
+            btn.classList.add('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+            btn.textContent = '⚠ Enregistrer (non sauvé)';
+        }
+
+        function markClean() {
+            isDirty = false;
+            const btn = document.getElementById('saveBtn');
+            btn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'animate-pulse');
+            btn.classList.add('bg-keolis-blue', 'hover:bg-keolis-light');
+            btn.textContent = 'Enregistrer';
+        }
+
+        // Warn si on ferme l'onglet/refresh avec des modifs non sauvees
+        window.addEventListener('beforeunload', (e) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
 
         // ========== LISTE ==========
         async function loadList() {
@@ -199,14 +225,21 @@
             renderPalette();
             renderSteps(dashboard.steps || []);
             refreshViz();
+            markClean();
+            // Watch les changements de label/nom pour mark dirty
+            document.getElementById('builderName').addEventListener('input', markDirty);
         }
 
         function closeBuilder() {
+            if (isDirty) {
+                if (!confirm('Vous avez des modifications non enregistrées. Quitter quand même ?')) return;
+            }
             document.getElementById('builderView').classList.add('hidden');
             document.getElementById('listView').classList.remove('hidden');
             if (histChart) { histChart.destroy(); histChart = null; }
             currentDashboard = null;
             lastVizData = null;
+            markClean();
             loadList();
         }
 
@@ -231,12 +264,14 @@
                 c.innerHTML = `<div id="emptyStepsZone" class="text-gray-500 text-xs text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">Glissez un event ici pour créer la 1ère étape.</div>`;
                 Sortable.create(document.getElementById('emptyStepsZone'), {
                     group: { name: 'events', pull: false, put: true },
-                    onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); },
+                    onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); markDirty(); },
                 });
                 return;
             }
             c.innerHTML = steps.map((step, i) => stepHtml(step, i)).join('');
             bindStepInteractions();
+            // Watch input des labels de step pour mark dirty
+            c.querySelectorAll('.step-label-input').forEach((inp) => inp.addEventListener('input', markDirty));
         }
 
         function stepHtml(step, idx) {
@@ -274,20 +309,22 @@
                         tag.dataset.eventNs = ns;
                         tag.innerHTML = `${escapeHtml(nm)} <button onclick="removeRef(this)" class="hover:bg-keolis-blue rounded px-1">×</button>`;
                         refs.appendChild(tag);
+                        markDirty();
                     },
                 });
             });
-            Sortable.create(document.getElementById('steps'), { animation: 150, handle: '.step-card', group: 'steps-reorder' });
+            Sortable.create(document.getElementById('steps'), { animation: 150, handle: '.step-card', group: 'steps-reorder', onEnd: markDirty });
         }
 
         function addStepWithRef(ns, nm) {
             const cur = collectStepsFromDOM();
             cur.push({ label: null, refs: [{ event_ns: ns }] });
             renderSteps(cur);
+            markDirty();
         }
-        function addEmptyStep() { const cur = collectStepsFromDOM(); cur.push({ label: null, refs: [] }); renderSteps(cur); }
-        function removeStep(btn) { btn.closest('.step-card').remove(); renderSteps(collectStepsFromDOM()); }
-        function removeRef(btn) { btn.closest('span[data-event-ns]').remove(); }
+        function addEmptyStep() { const cur = collectStepsFromDOM(); cur.push({ label: null, refs: [] }); renderSteps(cur); markDirty(); }
+        function removeStep(btn) { btn.closest('.step-card').remove(); renderSteps(collectStepsFromDOM()); markDirty(); }
+        function removeRef(btn) { btn.closest('span[data-event-ns]').remove(); markDirty(); }
 
         function collectStepsFromDOM() {
             const steps = [];
@@ -330,12 +367,15 @@
                     document.getElementById('builderName').value = dashboard.name;
                     renderSteps(dashboard.steps || []);
                 }
-                btn.textContent = '✓ Enregistré';
                 await refreshViz();
-                setTimeout(() => { btn.textContent = 'Enregistrer'; btn.disabled = false; }, 1500);
+                markClean();
+                btn.textContent = `✓ ${steps.length} étape${steps.length > 1 ? 's' : ''} enregistrée${steps.length > 1 ? 's' : ''}`;
+                btn.disabled = false;
+                setTimeout(() => { if (!isDirty) btn.textContent = 'Enregistrer'; }, 2500);
             } catch (err) {
                 alert(`Erreur : ${err.message}`);
-                btn.textContent = 'Enregistrer'; btn.disabled = false;
+                btn.textContent = isDirty ? '⚠ Enregistrer (non sauvé)' : 'Enregistrer';
+                btn.disabled = false;
             }
         }
 
