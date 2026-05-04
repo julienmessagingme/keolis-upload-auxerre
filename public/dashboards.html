@@ -268,8 +268,17 @@
                 });
                 return;
             }
-            c.innerHTML = steps.map((step, i) => stepHtml(step, i)).join('');
+            c.innerHTML = steps.map((step, i) => stepHtml(step, i)).join('') + `
+                <div id="newStepDropZone" class="text-gray-500 text-xs text-center py-4 border-2 border-dashed border-gray-300 rounded-lg mt-2">
+                    + Glissez ici pour créer une nouvelle étape
+                </div>
+            `;
             bindStepInteractions();
+            // Zone drop pour creer une nouvelle step en bas
+            Sortable.create(document.getElementById('newStepDropZone'), {
+                group: { name: 'events', pull: false, put: true },
+                onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); markDirty(); },
+            });
             // Watch input des labels de step pour mark dirty
             c.querySelectorAll('.step-label-input').forEach((inp) => inp.addEventListener('input', markDirty));
         }
@@ -442,38 +451,47 @@
             }
         }
 
-        // Vrai entonnoir : trapèzes décroissants en SVG (largeur proportionnelle au total)
+        // Vrai entonnoir : trapèzes décroissants en SVG.
+        // Label + total + % AU-DESSUS de chaque trapèze (toujours lisibles, sur
+        // fond blanc, en gris foncé). Dans le trapèze, juste le total en blanc
+        // si le trapèze est assez large, sinon rien (la valeur est de toute
+        // façon visible au-dessus).
         function drawFunnelSvg(steps) {
-            const W = 460;            // largeur SVG
-            const stepH = 56;          // hauteur par etape (incluant la barre + label)
-            const gap = 4;             // gap vertical entre etapes
-            const padTop = 8;
-            const H = padTop + steps.length * stepH + gap * (steps.length - 1);
+            const W = 460;
+            const labelH = 22;        // hauteur reservee au label au-dessus
+            const trapH = 44;         // hauteur du trapeze
+            const stepBlock = labelH + trapH + 8; // bloc total = label + trapeze + gap
+            const padTop = 4;
+            const H = padTop + steps.length * stepBlock;
             const maxTotal = Math.max(1, ...steps.map((s) => s.total));
+            const widths = steps.map((s) => Math.max(40, (s.total / maxTotal) * W * 0.9));
 
-            // Pour chaque etape, calcule les largeurs top et bottom (top = own width, bottom = next own width)
-            const widths = steps.map((s) => Math.max(8, (s.total / maxTotal) * W * 0.9)); // 90% max width pour laisser des marges
-            // Construire les trapezes
             let svg = `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height: 60vh;">`;
             for (let i = 0; i < steps.length; i++) {
                 const wTop = widths[i];
-                const wBot = i < steps.length - 1 ? widths[i + 1] : widths[i] * 0.6; // dernier rétrécit légèrement
+                const wBot = i < steps.length - 1 ? widths[i + 1] : widths[i] * 0.6;
                 const xTopL = (W - wTop) / 2;
                 const xTopR = xTopL + wTop;
                 const xBotL = (W - wBot) / 2;
                 const xBotR = xBotL + wBot;
-                const y0 = padTop + i * (stepH + gap);
-                const y1 = y0 + stepH;
+                const yLabel = padTop + i * stepBlock;
+                const y0 = yLabel + labelH;
+                const y1 = y0 + trapH;
                 const points = `${xTopL},${y0} ${xTopR},${y0} ${xBotR},${y1} ${xBotL},${y1}`;
                 const opacity = 0.95 - (i * 0.07);
                 const label = steps[i].label || steps[i].refs.map((r) => r.label).join(' + ');
                 const total = steps[i].total;
                 const dropPct = i > 0 && steps[i - 1].total > 0 ? ((total / steps[i - 1].total) * 100).toFixed(0) : null;
+                const labelLine = `${label}${dropPct !== null ? ` · ${dropPct}%` : ''}`;
+                // Total dans le trapeze seulement si trapeze assez large pour l'afficher
+                const totalText = String(total);
+                const showTotalInside = wBot > 30;
                 svg += `
-                    <polygon points="${points}" fill="#003366" fill-opacity="${opacity}" stroke="#fff" stroke-width="1"/>
-                    <text x="${W / 2}" y="${y0 + stepH / 2 + 5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">
-                        ${escapeHtml(label)} : ${total}${dropPct !== null ? ` (${dropPct}%)` : ''}
+                    <text x="${W / 2}" y="${yLabel + 14}" text-anchor="middle" fill="#374151" font-size="13" font-weight="600">
+                        ${escapeHtml(labelLine)}
                     </text>
+                    <polygon points="${points}" fill="#003366" fill-opacity="${opacity}" stroke="#fff" stroke-width="1"/>
+                    ${showTotalInside ? `<text x="${W / 2}" y="${y0 + trapH / 2 + 5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">${totalText}</text>` : ''}
                 `;
             }
             svg += `</svg>`;
