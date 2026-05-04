@@ -200,6 +200,10 @@ class AuthController {
       // Login reussi
       await this._recordAttempt(email, clientIP, userAgent, true);
 
+      // Mapper l'user Auxerre vers Supabase (uuid stable pour les stats / Mes tableaux).
+      // Tolere les pannes Supabase : userUuid = null si echec, le login continue.
+      const userUuid = await authService.upsertAuxerreUser(user.email, user.name || null);
+
       // Regenerer la session (protection session fixation)
       req.session.regenerate((err) => {
         if (err) {
@@ -210,7 +214,8 @@ class AuthController {
         req.session.user = {
           id: user.id,
           email: user.email,
-          role: user.role
+          role: user.role,
+          userUuid,
         };
 
         return res.json({

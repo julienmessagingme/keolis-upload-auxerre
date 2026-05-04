@@ -4,6 +4,7 @@ const otplib = require('otplib');
 const QRCode = require('qrcode');
 const authModel = require('./auth.model');
 const config = require('../../config');
+const { getSupabase } = require('../../services/supabase.service');
 
 /**
  * Service d'authentification
@@ -453,6 +454,33 @@ class AuthService {
       totpEnabled: !!user.totpEnabled,
       backupCodesRemaining: backupCodes.length
     };
+  }
+
+  /**
+   * Upsert l'user Auxerre dans la table Supabase auxerre_users (separee des
+   * users EDH). Retourne le uuid stable a stocker dans la session Express,
+   * utilise comme created_by dans dashboards (Plan 2 a venir).
+   *
+   * Tolerant aux pannes Supabase : si l'upsert echoue, log + retourne null.
+   * Le login Auxerre continue a marcher.
+   */
+  async upsertAuxerreUser(email, name) {
+    try {
+      const sb = getSupabase();
+      const { data, error } = await sb
+        .from('auxerre_users')
+        .upsert({ email, name: name ?? null }, { onConflict: 'email' })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return data.id;
+    } catch (err) {
+      console.error(JSON.stringify({
+        level: 'warn', msg: 'upsertAuxerreUser failed',
+        email, err: err.message,
+      }));
+      return null;
+    }
   }
 }
 
