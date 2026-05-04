@@ -157,28 +157,19 @@ async function updateDashboard(userUuid, dashboardId, patch) {
       );
     }
 
-    const { error: delErr } = await sb.from('dashboard_steps').delete().eq('dashboard_id', dashboardId);
-    if (delErr) throw new Error(`delete steps: ${delErr.message}`);
-
-    for (let i = 0; i < patch.steps.length; i++) {
-      const step = patch.steps[i];
-      const { data: stepRow, error: stepErr } = await sb
-        .from('dashboard_steps')
-        .insert({ dashboard_id: dashboardId, position: i, label: step.label || null })
-        .select('id')
-        .single();
-      if (stepErr) throw new Error(`insert step ${i}: ${stepErr.message}`);
-
-      const refRows = step.refs.map((r, ri) => ({
-        step_id: stepRow.id,
-        ref_position: ri,
-        step_type: 'mm_event',
-        event_ns: r.event_ns,
-        redirect_event_id: null,
-      }));
-      const { error: refsErr } = await sb.from('dashboard_step_refs').insert(refRows);
-      if (refsErr) throw new Error(`insert refs step ${i}: ${refsErr.message}`);
-    }
+    // Atomic replace via RPC PL/pgSQL (cf. supabase/migrations/007 cote EDH).
+    // Toute la sequence DELETE + INSERTs se fait dans une seule transaction
+    // PG : si quelque chose plante, on rollback au lieu de laisser le
+    // dashboard avec une moitie des steps.
+    const stepsPayload = patch.steps.map((s) => ({
+      label: s.label || null,
+      refs: s.refs.map((r) => ({ step_type: 'mm_event', event_ns: r.event_ns })),
+    }));
+    const { error: rpcErr } = await sb.rpc('replace_dashboard_steps', {
+      p_dashboard_id: dashboardId,
+      p_steps: stepsPayload,
+    });
+    if (rpcErr) throw new Error(`replace_dashboard_steps RPC: ${rpcErr.message}`);
   }
 }
 
