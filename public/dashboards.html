@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mes tableaux - Keolis Auxerre</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
         tailwind.config = { theme: { extend: { colors: { 'keolis-blue': '#003366', 'keolis-light': '#0066cc' } } } }
     </script>
 </head>
 <body class="bg-gradient-to-br from-keolis-blue to-keolis-light min-h-screen">
-    <!-- Navbar : Stats marque actif comme tab parent -->
     <nav class="bg-keolis-blue shadow-lg sticky top-0 z-50">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
@@ -26,35 +25,22 @@
                     <a href="/news.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">News</a>
                     <a href="/index.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">Fiches Horaires</a>
                     <a href="/knowledge.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">Base de Connaissances</a>
-                    <a href="/surveys.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
-                        Enquêtes Qualité
-                    </a>
-                    <a href="/stats.html" class="text-white bg-white bg-opacity-20 px-4 py-2 rounded-lg font-semibold hover:bg-opacity-30 transition-all flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        Stats
-                    </a>
-                    <a href="/admin.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                        Administration
-                    </a>
-                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                        Déconnexion
-                    </button>
+                    <a href="/surveys.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">Enquêtes Qualité</a>
+                    <a href="/stats.html" class="text-white bg-white bg-opacity-20 px-4 py-2 rounded-lg font-semibold hover:bg-opacity-30 transition-all">Stats</a>
+                    <a href="/admin.html" class="text-white px-4 py-2 rounded-lg font-semibold hover:bg-white hover:bg-opacity-10 transition-all">Administration</a>
+                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold">Déconnexion</button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container mx-auto px-4 py-8 max-w-6xl">
-        <!-- Sub-nav Stats / Mes tableaux -->
-        <div class="bg-white rounded-2xl shadow-2xl p-2 mb-6 inline-flex gap-1">
+    <div class="container mx-auto px-4 py-6 max-w-[1400px]">
+        <div class="bg-white rounded-2xl shadow-2xl p-2 mb-4 inline-flex gap-1">
             <a href="/stats.html" class="px-4 py-2 rounded-lg font-semibold text-keolis-blue hover:bg-gray-100 transition-all">Custom events</a>
             <a href="/dashboards.html" class="px-4 py-2 rounded-lg font-semibold bg-keolis-blue text-white">Mes tableaux</a>
         </div>
 
-        <!-- Vue LISTE -->
+        <!-- VUE LISTE -->
         <div id="listView">
             <div class="bg-white rounded-2xl shadow-2xl p-6 mb-6 flex items-center justify-between">
                 <div>
@@ -63,71 +49,65 @@
                 </div>
                 <button onclick="newDashboard()" class="bg-keolis-blue hover:bg-keolis-light text-white px-4 py-2 rounded-lg font-semibold whitespace-nowrap">+ Nouveau tableau</button>
             </div>
-            <div id="dashboardsList" class="space-y-2">
-                <div class="text-white text-center py-8">Chargement…</div>
-            </div>
+            <div id="dashboardsList" class="space-y-2"><div class="text-white text-center py-8">Chargement…</div></div>
         </div>
 
-        <!-- Vue BUILDER -->
+        <!-- VUE BUILDER : 3 cols [palette | steps | viz] -->
         <div id="builderView" class="hidden">
-            <div class="bg-white rounded-2xl shadow-2xl p-6 mb-6 flex items-center justify-between gap-4">
+            <!-- Header -->
+            <div class="bg-white rounded-2xl shadow-2xl p-4 mb-4 flex items-center justify-between gap-4">
                 <div class="flex-1 min-w-0">
-                    <button onclick="closeBuilder()" class="text-keolis-blue hover:underline mb-2 text-sm">← Retour à la liste</button>
-                    <input id="builderName" type="text" class="text-2xl font-bold text-keolis-blue border-b-2 border-transparent focus:border-keolis-blue focus:outline-none w-full" placeholder="Nom du tableau">
+                    <button onclick="closeBuilder()" class="text-keolis-blue hover:underline mb-1 text-xs">← Retour à la liste</button>
+                    <input id="builderName" type="text" class="text-xl font-bold text-keolis-blue border-b-2 border-transparent focus:border-keolis-blue focus:outline-none w-full" placeholder="Nom du tableau">
                 </div>
-                <button id="saveBtn" onclick="saveDashboard()" class="bg-keolis-blue hover:bg-keolis-light text-white px-4 py-2 rounded-lg font-semibold whitespace-nowrap">Enregistrer</button>
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <input id="vizDateFrom" type="date" class="border rounded-lg px-2 py-1 text-sm">
+                    <span class="text-gray-500 text-sm">→</span>
+                    <input id="vizDateTo" type="date" class="border rounded-lg px-2 py-1 text-sm">
+                    <button onclick="setVizPreset(7)" class="border border-keolis-blue text-keolis-blue px-2 py-1 rounded text-xs hover:bg-keolis-blue hover:text-white">7j</button>
+                    <button onclick="setVizPreset(30)" class="border border-keolis-blue text-keolis-blue px-2 py-1 rounded text-xs hover:bg-keolis-blue hover:text-white">30j</button>
+                    <button onclick="setVizPreset(90)" class="border border-keolis-blue text-keolis-blue px-2 py-1 rounded text-xs hover:bg-keolis-blue hover:text-white">90j</button>
+                    <button id="saveBtn" onclick="saveDashboard()" class="bg-keolis-blue hover:bg-keolis-light text-white px-4 py-2 rounded-lg font-semibold ml-2">Enregistrer</button>
+                </div>
             </div>
 
-            <div class="grid grid-cols-12 gap-6">
-                <!-- Palette events -->
-                <div class="col-span-4 bg-white rounded-2xl shadow-2xl p-4">
-                    <h3 class="font-bold text-keolis-blue mb-3">Custom events MessagingMe</h3>
-                    <p class="text-xs text-gray-500 mb-3">Glissez un event sur une étape pour l'ajouter (cumul possible).</p>
-                    <div id="palette" class="space-y-1 max-h-[600px] overflow-y-auto">
-                        <div class="text-gray-500 text-sm">Chargement…</div>
-                    </div>
+            <!-- 3 colonnes : palette | steps | viz -->
+            <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr_1.2fr] gap-4">
+                <!-- Col 1 : Palette events -->
+                <div class="bg-white rounded-2xl shadow-2xl p-4 max-h-[78vh] overflow-y-auto">
+                    <h3 class="font-bold text-keolis-blue mb-2 text-sm">Custom events MM</h3>
+                    <p class="text-xs text-gray-500 mb-3">Glissez vers une étape →</p>
+                    <div id="palette" class="space-y-1"><div class="text-gray-500 text-xs">Chargement…</div></div>
                 </div>
 
-                <!-- Steps droppables -->
-                <div class="col-span-8 bg-white rounded-2xl shadow-2xl p-4">
+                <!-- Col 2 : Steps -->
+                <div class="bg-white rounded-2xl shadow-2xl p-4 max-h-[78vh] overflow-y-auto">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-bold text-keolis-blue">Étapes du funnel</h3>
-                        <button onclick="addEmptyStep()" class="text-keolis-blue text-sm hover:underline">+ Étape vide</button>
+                        <h3 class="font-bold text-keolis-blue text-sm">Étapes du funnel</h3>
+                        <button onclick="addEmptyStep()" class="text-keolis-blue text-xs hover:underline">+ Étape vide</button>
                     </div>
-                    <div id="steps" class="space-y-3 min-h-[200px]"></div>
-                </div>
-            </div>
-
-            <!-- Viz funnel + histogramme -->
-            <div id="vizContainer" class="hidden bg-white rounded-2xl shadow-2xl p-6 mt-6">
-                <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
-                    <h3 class="font-bold text-keolis-blue">Visualisation</h3>
-                    <div class="inline-flex border border-keolis-blue rounded-lg overflow-hidden text-sm">
-                        <button id="vizModeFunnel" onclick="setVizMode('funnel')" class="px-3 py-1 bg-keolis-blue text-white">Entonnoir</button>
-                        <button id="vizModeHistogram" onclick="setVizMode('histogram')" class="px-3 py-1 text-keolis-blue hover:bg-gray-100">Histogramme</button>
-                    </div>
+                    <div id="steps" class="space-y-2 min-h-[200px]"></div>
                 </div>
 
-                <!-- Filtre periode + telechargements -->
-                <div class="flex items-end gap-3 flex-wrap mb-4 pb-4 border-b border-gray-200">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Du</label>
-                        <input id="vizDateFrom" type="date" class="border rounded-lg px-3 py-1 text-sm">
+                <!-- Col 3 : Viz -->
+                <div class="bg-white rounded-2xl shadow-2xl p-4 max-h-[78vh] overflow-y-auto">
+                    <div class="flex items-center justify-between mb-3 gap-2">
+                        <h3 class="font-bold text-keolis-blue text-sm">Visualisation</h3>
+                        <div class="inline-flex border border-keolis-blue rounded overflow-hidden text-xs">
+                            <button id="vizModeFunnel" onclick="setVizMode('funnel')" class="px-2 py-1 bg-keolis-blue text-white">Entonnoir</button>
+                            <button id="vizModeHistogram" onclick="setVizMode('histogram')" class="px-2 py-1 text-keolis-blue hover:bg-gray-100">Histogramme</button>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Au</label>
-                        <input id="vizDateTo" type="date" class="border rounded-lg px-3 py-1 text-sm">
+                    <div class="flex items-center gap-2 mb-3 text-xs">
+                        <button onclick="refreshViz()" class="text-keolis-blue hover:underline">↻ Actualiser</button>
+                        <span class="flex-1"></span>
+                        <button onclick="downloadChartPng()" class="border border-gray-400 text-gray-700 px-2 py-1 rounded hover:bg-gray-100">⬇ PNG</button>
+                        <button onclick="downloadCsv()" class="border border-gray-400 text-gray-700 px-2 py-1 rounded hover:bg-gray-100">⬇ CSV</button>
                     </div>
-                    <button onclick="setVizPreset(7)" class="border border-keolis-blue text-keolis-blue px-3 py-1 rounded-lg text-sm hover:bg-keolis-blue hover:text-white transition-all">7j</button>
-                    <button onclick="setVizPreset(30)" class="border border-keolis-blue text-keolis-blue px-3 py-1 rounded-lg text-sm hover:bg-keolis-blue hover:text-white transition-all">30j</button>
-                    <button onclick="setVizPreset(90)" class="border border-keolis-blue text-keolis-blue px-3 py-1 rounded-lg text-sm hover:bg-keolis-blue hover:text-white transition-all">90j</button>
-                    <button onclick="refreshViz()" class="bg-keolis-blue hover:bg-keolis-light text-white px-3 py-1 rounded-lg font-semibold text-sm">Actualiser</button>
-                    <div class="flex-1"></div>
-                    <button onclick="downloadChartPng()" class="border border-gray-400 text-gray-700 px-3 py-1 rounded-lg text-sm hover:bg-gray-100 transition-all">⬇ PNG</button>
-                    <button onclick="downloadCsv()" class="border border-gray-400 text-gray-700 px-3 py-1 rounded-lg text-sm hover:bg-gray-100 transition-all">⬇ CSV</button>
+                    <div id="vizEmpty" class="text-gray-500 text-sm text-center py-12">Ajoutez des étapes et enregistrez pour voir la viz.</div>
+                    <div id="vizFunnel" class="hidden"></div>
+                    <canvas id="histChart" class="hidden" height="120"></canvas>
                 </div>
-
-                <canvas id="funnelChart" height="120"></canvas>
             </div>
         </div>
     </div>
@@ -135,14 +115,13 @@
     <script>
         let currentDashboard = null;
         let availableEvents = [];
-        let funnelChart = null;
-        let vizMode = 'funnel'; // 'funnel' (bar horizontal) | 'histogram' (bar vertical)
-        let lastVizData = null; // pour le download CSV (memoire des derniers counts charges)
+        let histChart = null;
+        let vizMode = 'funnel';
+        let lastVizData = null;
 
         // ========== LISTE ==========
-
         async function loadList() {
-            const r = await fetch('/api/dashboards');
+            const r = await fetch('/api/dashboards', { cache: 'no-store' });
             if (!r.ok) {
                 document.getElementById('dashboardsList').innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-lg">Erreur HTTP ${r.status}</div>`;
                 return;
@@ -175,11 +154,11 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: name.trim() }),
+                cache: 'no-store',
             });
             if (!r.ok) {
                 const j = await r.json().catch(() => ({}));
-                alert(`Erreur : ${j.error || `HTTP ${r.status}`}`);
-                return;
+                alert(`Erreur : ${j.error || `HTTP ${r.status}`}`); return;
             }
             const { id } = await r.json();
             openBuilder(id);
@@ -187,20 +166,27 @@
 
         async function deleteDashboard(id, name) {
             if (!confirm(`Supprimer le tableau « ${name} » ? Cette action est irréversible.`)) return;
-            const r = await fetch(`/api/dashboards/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            const r = await fetch(`/api/dashboards/${encodeURIComponent(id)}`, { method: 'DELETE', cache: 'no-store' });
             if (!r.ok) { alert(`Erreur HTTP ${r.status}`); return; }
             loadList();
         }
 
         // ========== BUILDER ==========
-
         async function openBuilder(id) {
             document.getElementById('listView').classList.add('hidden');
             document.getElementById('builderView').classList.remove('hidden');
 
+            // Init dates 30j si pas deja set
+            if (!document.getElementById('vizDateFrom').value) {
+                const today = new Date();
+                const from = new Date(today); from.setDate(from.getDate() - 29);
+                document.getElementById('vizDateFrom').value = from.toISOString().slice(0, 10);
+                document.getElementById('vizDateTo').value = today.toISOString().slice(0, 10);
+            }
+
             const [dashRes, evRes] = await Promise.all([
-                fetch(`/api/dashboards/${encodeURIComponent(id)}`),
-                fetch('/api/stats/custom-events?from=2020-01-01&to=2099-12-31'),
+                fetch(`/api/dashboards/${encodeURIComponent(id)}`, { cache: 'no-store' }),
+                fetch('/api/stats/custom-events?from=2020-01-01&to=2099-12-31', { cache: 'no-store' }),
             ]);
             if (!dashRes.ok) { alert(`Erreur ${dashRes.status} chargement tableau`); closeBuilder(); return; }
             if (!evRes.ok) { alert(`Erreur ${evRes.status} chargement palette`); closeBuilder(); return; }
@@ -209,7 +195,6 @@
 
             currentDashboard = dashboard;
             availableEvents = events || [];
-
             document.getElementById('builderName').value = dashboard.name;
             renderPalette();
             renderSteps(dashboard.steps || []);
@@ -219,49 +204,34 @@
         function closeBuilder() {
             document.getElementById('builderView').classList.add('hidden');
             document.getElementById('listView').classList.remove('hidden');
-            if (funnelChart) { funnelChart.destroy(); funnelChart = null; }
-            document.getElementById('vizContainer').classList.add('hidden');
+            if (histChart) { histChart.destroy(); histChart = null; }
             currentDashboard = null;
+            lastVizData = null;
             loadList();
         }
 
         function renderPalette() {
             const c = document.getElementById('palette');
             if (availableEvents.length === 0) {
-                c.innerHTML = '<div class="text-gray-500 text-sm">Aucun event disponible. Lancez un sync depuis la page Stats.</div>';
+                c.innerHTML = '<div class="text-gray-500 text-xs">Aucun event. Lancez un sync depuis la page Stats.</div>';
                 return;
             }
             c.innerHTML = availableEvents.map(ev => `
-                <div class="palette-item bg-gray-100 hover:bg-gray-200 rounded p-2 cursor-grab text-sm" data-event-ns="${escapeAttr(ev.event_ns)}" data-event-name="${escapeAttr(ev.name)}">
+                <div class="palette-item bg-gray-100 hover:bg-gray-200 rounded p-2 cursor-grab text-xs" data-event-ns="${escapeAttr(ev.event_ns)}" data-event-name="${escapeAttr(ev.name)}">
                     <div class="font-semibold text-keolis-blue truncate">${escapeHtml(ev.name)}</div>
-                    ${ev.description ? `<div class="text-xs text-gray-600 truncate">${escapeHtml(ev.description)}</div>` : ''}
+                    ${ev.description ? `<div class="text-[10px] text-gray-600 truncate">${escapeHtml(ev.description)}</div>` : ''}
                 </div>
             `).join('');
-
-            Sortable.create(c, {
-                group: { name: 'events', pull: 'clone', put: false },
-                sort: false,
-                animation: 150,
-            });
+            Sortable.create(c, { group: { name: 'events', pull: 'clone', put: false }, sort: false, animation: 150 });
         }
 
         function renderSteps(steps) {
             const c = document.getElementById('steps');
             if (steps.length === 0) {
-                c.innerHTML = `
-                    <div id="emptyStepsZone" class="text-gray-500 text-sm text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                        Glissez un event de la palette ici pour créer la première étape.
-                    </div>
-                `;
+                c.innerHTML = `<div id="emptyStepsZone" class="text-gray-500 text-xs text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">Glissez un event ici pour créer la 1ère étape.</div>`;
                 Sortable.create(document.getElementById('emptyStepsZone'), {
                     group: { name: 'events', pull: false, put: true },
-                    onAdd: (evt) => {
-                        const item = evt.item;
-                        const eventNs = item.dataset.eventNs;
-                        const eventName = item.dataset.eventName;
-                        item.remove();
-                        addStepWithRef(eventNs, eventName);
-                    },
+                    onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); },
                 });
                 return;
             }
@@ -272,85 +242,59 @@
         function stepHtml(step, idx) {
             const refsHtml = (step.refs || []).map(r => {
                 const ev = availableEvents.find(e => e.event_ns === r.event_ns);
-                const label = ev ? ev.name : '(indisponible)';
-                return `<span class="inline-flex items-center gap-1 bg-keolis-light text-white text-xs px-2 py-1 rounded mr-1 mb-1" data-event-ns="${escapeAttr(r.event_ns)}">
+                const label = ev ? ev.name : '(indispo)';
+                return `<span class="inline-flex items-center gap-1 bg-keolis-light text-white text-[10px] px-2 py-1 rounded mr-1 mb-1" data-event-ns="${escapeAttr(r.event_ns)}">
                     ${escapeHtml(label)}
                     <button onclick="removeRef(this)" class="hover:bg-keolis-blue rounded px-1">×</button>
                 </span>`;
             }).join('');
-            const fallbackLabel = (step.refs || []).map(r => {
-                const ev = availableEvents.find(e => e.event_ns === r.event_ns);
-                return ev ? ev.name : '?';
-            }).join(' + ');
+            const fallbackLabel = (step.refs || []).map(r => availableEvents.find(e => e.event_ns === r.event_ns)?.name || '?').join(' + ');
             return `
-                <div class="step-card bg-gray-50 border border-gray-200 rounded-lg p-3" data-step-index="${idx}">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="bg-keolis-blue text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0">${idx + 1}</span>
-                        <input type="text" class="step-label-input flex-1 border-b border-transparent focus:border-keolis-blue focus:outline-none text-sm" placeholder="Label (vide = '${escapeAttr(fallbackLabel)}')" value="${escapeAttr(step.label || '')}">
-                        <button onclick="removeStep(this)" class="text-red-600 hover:text-red-800 text-sm flex-shrink-0">🗑</button>
+                <div class="step-card bg-gray-50 border border-gray-200 rounded-lg p-2" data-step-index="${idx}">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="bg-keolis-blue text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0">${idx + 1}</span>
+                        <input type="text" class="step-label-input flex-1 border-b border-transparent focus:border-keolis-blue focus:outline-none text-xs" placeholder="Label (vide = '${escapeAttr(fallbackLabel)}')" value="${escapeAttr(step.label || '')}">
+                        <button onclick="removeStep(this)" class="text-red-600 hover:text-red-800 text-xs flex-shrink-0">🗑</button>
                     </div>
-                    <div class="step-refs flex flex-wrap min-h-[28px]">${refsHtml}</div>
+                    <div class="step-refs flex flex-wrap min-h-[24px]">${refsHtml}</div>
                 </div>
             `;
         }
 
         function bindStepInteractions() {
             document.querySelectorAll('.step-card').forEach((card) => {
-                const refsContainer = card.querySelector('.step-refs');
-                Sortable.create(refsContainer, {
+                const refs = card.querySelector('.step-refs');
+                Sortable.create(refs, {
                     group: { name: 'events', pull: false, put: true },
                     onAdd: (evt) => {
-                        const item = evt.item;
-                        const eventNs = item.dataset.eventNs;
-                        const eventName = item.dataset.eventName;
-                        item.remove();
-                        if (refsContainer.querySelector(`[data-event-ns="${CSS.escape(eventNs)}"]`)) return;
+                        const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove();
+                        if (refs.querySelector(`[data-event-ns="${CSS.escape(ns)}"]`)) return;
                         const tag = document.createElement('span');
-                        tag.className = 'inline-flex items-center gap-1 bg-keolis-light text-white text-xs px-2 py-1 rounded mr-1 mb-1';
-                        tag.dataset.eventNs = eventNs;
-                        tag.innerHTML = `${escapeHtml(eventName)} <button onclick="removeRef(this)" class="hover:bg-keolis-blue rounded px-1">×</button>`;
-                        refsContainer.appendChild(tag);
+                        tag.className = 'inline-flex items-center gap-1 bg-keolis-light text-white text-[10px] px-2 py-1 rounded mr-1 mb-1';
+                        tag.dataset.eventNs = ns;
+                        tag.innerHTML = `${escapeHtml(nm)} <button onclick="removeRef(this)" class="hover:bg-keolis-blue rounded px-1">×</button>`;
+                        refs.appendChild(tag);
                     },
                 });
             });
-
-            Sortable.create(document.getElementById('steps'), {
-                animation: 150,
-                handle: '.step-card',
-                group: 'steps-reorder',
-            });
+            Sortable.create(document.getElementById('steps'), { animation: 150, handle: '.step-card', group: 'steps-reorder' });
         }
 
-        function addStepWithRef(eventNs, eventName) {
-            const currentSteps = collectStepsFromDOM();
-            currentSteps.push({ label: null, refs: [{ event_ns: eventNs }] });
-            renderSteps(currentSteps);
+        function addStepWithRef(ns, nm) {
+            const cur = collectStepsFromDOM();
+            cur.push({ label: null, refs: [{ event_ns: ns }] });
+            renderSteps(cur);
         }
-
-        function addEmptyStep() {
-            const currentSteps = collectStepsFromDOM();
-            currentSteps.push({ label: null, refs: [] });
-            renderSteps(currentSteps);
-        }
-
-        function removeStep(btn) {
-            btn.closest('.step-card').remove();
-            const steps = collectStepsFromDOM();
-            renderSteps(steps);
-        }
-
-        function removeRef(btn) {
-            btn.closest('span[data-event-ns]').remove();
-        }
+        function addEmptyStep() { const cur = collectStepsFromDOM(); cur.push({ label: null, refs: [] }); renderSteps(cur); }
+        function removeStep(btn) { btn.closest('.step-card').remove(); renderSteps(collectStepsFromDOM()); }
+        function removeRef(btn) { btn.closest('span[data-event-ns]').remove(); }
 
         function collectStepsFromDOM() {
             const steps = [];
             document.querySelectorAll('.step-card').forEach((card) => {
                 const label = card.querySelector('.step-label-input').value.trim() || null;
                 const refs = [];
-                card.querySelectorAll('.step-refs > span[data-event-ns]').forEach((tag) => {
-                    refs.push({ event_ns: tag.dataset.eventNs });
-                });
+                card.querySelectorAll('.step-refs > span[data-event-ns]').forEach((tag) => refs.push({ event_ns: tag.dataset.eventNs }));
                 steps.push({ label, refs });
             });
             return steps;
@@ -363,27 +307,23 @@
             const allSteps = collectStepsFromDOM();
             const emptyCount = allSteps.filter((s) => s.refs.length === 0).length;
             if (emptyCount > 0) {
-                const ok = confirm(`${emptyCount} étape${emptyCount > 1 ? 's sont vides et seront supprimées' : ' est vide et sera supprimée'} à l'enregistrement. Continuer ?`);
+                const ok = confirm(`${emptyCount} étape${emptyCount > 1 ? 's vides seront supprimées' : ' vide sera supprimée'} à l'enregistrement. Continuer ?`);
                 if (!ok) return;
             }
             const steps = allSteps.filter((s) => s.refs.length > 0);
             const btn = document.getElementById('saveBtn');
-            btn.disabled = true;
-            btn.textContent = '⏳ Enregistrement…';
+            btn.disabled = true; btn.textContent = '⏳…';
             try {
                 const r = await fetch(`/api/dashboards/${encodeURIComponent(currentDashboard.id)}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name, steps }),
+                    cache: 'no-store',
                 });
-                if (!r.ok) {
-                    const j = await r.json().catch(() => ({}));
-                    throw new Error(j.error || `HTTP ${r.status}`);
-                }
-                // Re-sync DOM avec l'etat canonique du serveur (steps deduplicates,
-                // labels normalises, etc.). Evite que le DOM montre une valeur
-                // differente de ce qui est en DB.
-                const refreshed = await fetch(`/api/dashboards/${encodeURIComponent(currentDashboard.id)}`);
+                if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || `HTTP ${r.status}`); }
+
+                // Re-fetch canonique pour aligner DOM avec DB
+                const refreshed = await fetch(`/api/dashboards/${encodeURIComponent(currentDashboard.id)}`, { cache: 'no-store' });
                 if (refreshed.ok) {
                     const { dashboard } = await refreshed.json();
                     currentDashboard = dashboard;
@@ -392,46 +332,171 @@
                 }
                 btn.textContent = '✓ Enregistré';
                 await refreshViz();
-                setTimeout(() => { btn.textContent = 'Enregistrer'; btn.disabled = false; }, 2000);
+                setTimeout(() => { btn.textContent = 'Enregistrer'; btn.disabled = false; }, 1500);
             } catch (err) {
-                alert(`Erreur enregistrement : ${err.message}`);
-                btn.textContent = 'Enregistrer';
-                btn.disabled = false;
+                alert(`Erreur : ${err.message}`);
+                btn.textContent = 'Enregistrer'; btn.disabled = false;
             }
+        }
+
+        // ========== VIZ ==========
+        function setVizPreset(days) {
+            const to = new Date();
+            const from = new Date(); from.setDate(from.getDate() - days + 1);
+            document.getElementById('vizDateFrom').value = from.toISOString().slice(0, 10);
+            document.getElementById('vizDateTo').value = to.toISOString().slice(0, 10);
+            refreshViz();
         }
 
         function setVizMode(mode) {
             vizMode = mode;
-            document.getElementById('vizModeFunnel').className = mode === 'funnel'
-                ? 'px-3 py-1 bg-keolis-blue text-white'
-                : 'px-3 py-1 text-keolis-blue hover:bg-gray-100';
-            document.getElementById('vizModeHistogram').className = mode === 'histogram'
-                ? 'px-3 py-1 bg-keolis-blue text-white'
-                : 'px-3 py-1 text-keolis-blue hover:bg-gray-100';
-            refreshViz();
+            document.getElementById('vizModeFunnel').className = mode === 'funnel' ? 'px-2 py-1 bg-keolis-blue text-white' : 'px-2 py-1 text-keolis-blue hover:bg-gray-100';
+            document.getElementById('vizModeHistogram').className = mode === 'histogram' ? 'px-2 py-1 bg-keolis-blue text-white' : 'px-2 py-1 text-keolis-blue hover:bg-gray-100';
+            renderViz();
         }
 
+        async function refreshViz() {
+            if (!currentDashboard) return;
+            const fromStr = document.getElementById('vizDateFrom').value;
+            const toStr = document.getElementById('vizDateTo').value;
+            if (!fromStr || !toStr) return;
+
+            const r = await fetch(`/api/dashboards/${encodeURIComponent(currentDashboard.id)}/data?from=${fromStr}&to=${toStr}`, { cache: 'no-store' });
+            if (!r.ok) {
+                document.getElementById('vizEmpty').textContent = `Erreur HTTP ${r.status}`;
+                document.getElementById('vizEmpty').classList.remove('hidden');
+                document.getElementById('vizFunnel').classList.add('hidden');
+                document.getElementById('histChart').classList.add('hidden');
+                return;
+            }
+            const data = await r.json();
+            lastVizData = { ...data, fromStr, toStr };
+            renderViz();
+        }
+
+        function renderViz() {
+            if (!lastVizData) return;
+            const stepsWithRefs = (lastVizData.steps || []).filter((s) => s.refs.length > 0);
+            const vizEmpty = document.getElementById('vizEmpty');
+            const vizFunnel = document.getElementById('vizFunnel');
+            const histCanvas = document.getElementById('histChart');
+            if (histChart) { histChart.destroy(); histChart = null; }
+
+            if (stepsWithRefs.length === 0) {
+                vizEmpty.textContent = 'Ajoutez des étapes et enregistrez pour voir la viz.';
+                vizEmpty.classList.remove('hidden');
+                vizFunnel.classList.add('hidden');
+                histCanvas.classList.add('hidden');
+                return;
+            }
+            vizEmpty.classList.add('hidden');
+
+            if (vizMode === 'funnel') {
+                histCanvas.classList.add('hidden');
+                vizFunnel.classList.remove('hidden');
+                drawFunnelSvg(stepsWithRefs);
+            } else {
+                vizFunnel.classList.add('hidden');
+                histCanvas.classList.remove('hidden');
+                drawHistogram(stepsWithRefs);
+            }
+        }
+
+        // Vrai entonnoir : trapèzes décroissants en SVG (largeur proportionnelle au total)
+        function drawFunnelSvg(steps) {
+            const W = 460;            // largeur SVG
+            const stepH = 56;          // hauteur par etape (incluant la barre + label)
+            const gap = 4;             // gap vertical entre etapes
+            const padTop = 8;
+            const H = padTop + steps.length * stepH + gap * (steps.length - 1);
+            const maxTotal = Math.max(1, ...steps.map((s) => s.total));
+
+            // Pour chaque etape, calcule les largeurs top et bottom (top = own width, bottom = next own width)
+            const widths = steps.map((s) => Math.max(8, (s.total / maxTotal) * W * 0.9)); // 90% max width pour laisser des marges
+            // Construire les trapezes
+            let svg = `<svg viewBox="0 0 ${W} ${H}" class="w-full" style="max-height: 60vh;">`;
+            for (let i = 0; i < steps.length; i++) {
+                const wTop = widths[i];
+                const wBot = i < steps.length - 1 ? widths[i + 1] : widths[i] * 0.6; // dernier rétrécit légèrement
+                const xTopL = (W - wTop) / 2;
+                const xTopR = xTopL + wTop;
+                const xBotL = (W - wBot) / 2;
+                const xBotR = xBotL + wBot;
+                const y0 = padTop + i * (stepH + gap);
+                const y1 = y0 + stepH;
+                const points = `${xTopL},${y0} ${xTopR},${y0} ${xBotR},${y1} ${xBotL},${y1}`;
+                const opacity = 0.95 - (i * 0.07);
+                const label = steps[i].label || steps[i].refs.map((r) => r.label).join(' + ');
+                const total = steps[i].total;
+                const dropPct = i > 0 && steps[i - 1].total > 0 ? ((total / steps[i - 1].total) * 100).toFixed(0) : null;
+                svg += `
+                    <polygon points="${points}" fill="#003366" fill-opacity="${opacity}" stroke="#fff" stroke-width="1"/>
+                    <text x="${W / 2}" y="${y0 + stepH / 2 + 5}" text-anchor="middle" fill="#fff" font-size="14" font-weight="bold">
+                        ${escapeHtml(label)} : ${total}${dropPct !== null ? ` (${dropPct}%)` : ''}
+                    </text>
+                `;
+            }
+            svg += `</svg>`;
+            document.getElementById('vizFunnel').innerHTML = svg;
+        }
+
+        function drawHistogram(steps) {
+            const ctx = document.getElementById('histChart').getContext('2d');
+            histChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: steps.map((s) => s.label || s.refs.map((r) => r.label).join(' + ')),
+                    datasets: [{
+                        label: `Volumes (${lastVizData.fromStr} → ${lastVizData.toStr})`,
+                        data: steps.map((s) => s.total),
+                        backgroundColor: '#003366',
+                    }],
+                },
+                options: { responsive: true, plugins: { legend: { display: true, position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+            });
+        }
+
+        // ========== TELECHARGEMENTS ==========
         function downloadChartPng() {
-            if (!funnelChart || !currentDashboard) return;
-            // toBase64Image utilise un fond transparent par defaut.
-            // On ajoute un fond blanc en composant nous-memes pour eviter les charts illisibles.
-            const canvas = document.getElementById('funnelChart');
-            const tmp = document.createElement('canvas');
-            tmp.width = canvas.width; tmp.height = canvas.height;
-            const ctx = tmp.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, tmp.width, tmp.height);
-            ctx.drawImage(canvas, 0, 0);
-            const url = tmp.toDataURL('image/png');
+            if (!currentDashboard) return;
             const safeName = currentDashboard.name.replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
+            const filename = `${safeName}_${vizMode}_${lastVizData?.fromStr || ''}_${lastVizData?.toStr || ''}.png`;
+
+            if (vizMode === 'histogram') {
+                if (!histChart) return;
+                const canvas = document.getElementById('histChart');
+                const tmp = document.createElement('canvas');
+                tmp.width = canvas.width; tmp.height = canvas.height;
+                const c = tmp.getContext('2d');
+                c.fillStyle = '#fff'; c.fillRect(0, 0, tmp.width, tmp.height);
+                c.drawImage(canvas, 0, 0);
+                triggerDownload(tmp.toDataURL('image/png'), filename);
+            } else {
+                // SVG -> PNG via Image + Canvas
+                const svgEl = document.querySelector('#vizFunnel svg');
+                if (!svgEl) return;
+                const xml = new XMLSerializer().serializeToString(svgEl);
+                const svg64 = btoa(unescape(encodeURIComponent(xml)));
+                const img = new Image();
+                img.onload = () => {
+                    const tmp = document.createElement('canvas');
+                    tmp.width = svgEl.viewBox.baseVal.width * 2; tmp.height = svgEl.viewBox.baseVal.height * 2;
+                    const c = tmp.getContext('2d');
+                    c.fillStyle = '#fff'; c.fillRect(0, 0, tmp.width, tmp.height);
+                    c.drawImage(img, 0, 0, tmp.width, tmp.height);
+                    triggerDownload(tmp.toDataURL('image/png'), filename);
+                };
+                img.src = `data:image/svg+xml;base64,${svg64}`;
+            }
+        }
+
+        function triggerDownload(href, filename) {
             const a = document.createElement('a');
-            a.href = url;
-            a.download = `${safeName}_${vizMode}_${lastVizData?.fromStr || ''}_${lastVizData?.toStr || ''}.png`;
-            a.click();
+            a.href = href; a.download = filename; a.click();
         }
 
         function downloadCsv() {
-            if (!lastVizData || !currentDashboard) { alert('Pas de donnees a exporter — chargez d\'abord la viz.'); return; }
+            if (!lastVizData || !currentDashboard) { alert('Pas de données — chargez d\'abord la viz.'); return; }
             const stepsWithRefs = (lastVizData.steps || []).filter((s) => s.refs.length > 0);
             const lines = [];
             lines.push('# Tableau,Periode_du,Periode_au');
@@ -443,89 +508,15 @@
                 const refsDetail = s.refs.map((r) => `${r.label}=${r.count}`).join(' | ');
                 lines.push(`${s.position + 1},${csvEscape(stepLabel)},${s.total},${csvEscape(refsDetail)}`);
             }
-            const csv = '﻿' + lines.join('\n'); // BOM pour Excel + UTF-8
+            const csv = '﻿' + lines.join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const safeName = currentDashboard.name.replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${safeName}_${lastVizData.fromStr}_${lastVizData.toStr}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
+            triggerDownload(url, `${safeName}_${lastVizData.fromStr}_${lastVizData.toStr}.csv`);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        function csvEscape(s) {
-            const v = String(s ?? '');
-            if (/[",\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-            return v;
-        }
-
-        // ========== VIZ ==========
-
-        function setVizPreset(days) {
-            const to = new Date();
-            const from = new Date(); from.setDate(from.getDate() - days + 1);
-            document.getElementById('vizDateFrom').value = from.toISOString().slice(0, 10);
-            document.getElementById('vizDateTo').value = to.toISOString().slice(0, 10);
-            refreshViz();
-        }
-
-        async function refreshViz() {
-            if (!currentDashboard) return;
-            // Si les dates ne sont pas initialisees, prendre les 30 derniers jours par defaut
-            let fromStr = document.getElementById('vizDateFrom').value;
-            let toStr = document.getElementById('vizDateTo').value;
-            if (!fromStr || !toStr) {
-                const today = new Date();
-                const from = new Date(today); from.setDate(from.getDate() - 29);
-                fromStr = from.toISOString().slice(0, 10);
-                toStr = today.toISOString().slice(0, 10);
-                document.getElementById('vizDateFrom').value = fromStr;
-                document.getElementById('vizDateTo').value = toStr;
-            }
-
-            const r = await fetch(`/api/dashboards/${encodeURIComponent(currentDashboard.id)}/data?from=${fromStr}&to=${toStr}`);
-            if (!r.ok) {
-                document.getElementById('vizContainer').classList.add('hidden');
-                return;
-            }
-            const data = await r.json();
-            lastVizData = { ...data, fromStr, toStr };
-            const stepsWithRefs = (data.steps || []).filter((s) => s.refs.length > 0);
-            if (stepsWithRefs.length === 0) {
-                document.getElementById('vizContainer').classList.add('hidden');
-                return;
-            }
-            document.getElementById('vizContainer').classList.remove('hidden');
-
-            if (funnelChart) funnelChart.destroy();
-            const ctx = document.getElementById('funnelChart').getContext('2d');
-            const labels = stepsWithRefs.map((s) => s.label || s.refs.map((r) => r.label).join(' + '));
-            const totals = stepsWithRefs.map((s) => s.total);
-            const isFunnel = vizMode === 'funnel';
-            funnelChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [{
-                        label: `Volumes (${fromStr} → ${toStr})`,
-                        data: totals,
-                        backgroundColor: '#003366',
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    indexAxis: isFunnel ? 'y' : 'x', // funnel = bar horizontal, histogram = bar vertical
-                    plugins: { legend: { display: true, position: 'top' } },
-                    scales: isFunnel
-                        ? { x: { beginAtZero: true, ticks: { precision: 0 } } }
-                        : { y: { beginAtZero: true, ticks: { precision: 0 } } },
-                },
-            });
-        }
-
-        // ========== UTILS ==========
-
+        function csvEscape(s) { const v = String(s ?? ''); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }
         function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
         function escapeAttr(s) { return escapeHtml(s); }
 
