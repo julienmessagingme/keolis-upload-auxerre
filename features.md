@@ -31,7 +31,7 @@ Page `/admin.html` (admin only). Gestion des utilisateurs : inviter, lister, cha
 Page `/stats.html`. Volumetrie journaliere de chaque custom event MessagingMe Auxerre. Filtre periode (7j/30j/90j ou date custom), liste accordeons par event, chart bar journalier au depliement. Sync nocturne automatique a 22h + bouton resync manuel pour les admins. Hebergement DB : Supabase, projet partage avec EDH (`school_slug = "auxerre"`, isolation par construction — EDH n'a pas `auxerre` dans sa constante SCHOOLS).
 
 ### Mes tableaux
-Page `/dashboards.html` (sous-onglet de Stats). Chaque utilisateur cree ses propres funnels prives en glissant des events MessagingMe depuis une palette vers des etapes ordonnees. Chaque etape peut cumuler plusieurs events (volumes sommes). Reorder en drag, label editable, viz bar chart funnel sur les 30 derniers jours. Replacement atomique des steps en DB via RPC PL/pgSQL (transaction Postgres, rollback automatique si crash au milieu). Persiste sur Supabase (memes tables qu'EDH, scope `auxerre`).
+Page `/dashboards.html` (sous-onglet de Stats). Chaque utilisateur cree ses propres funnels prives en glissant des events MessagingMe depuis une palette vers des etapes ordonnees. Chaque etape peut cumuler plusieurs events (volumes sommes). Reorder en drag, label editable. 3 modes de visualisation : **Entonnoir** (SVG funnel avec drop-off %), **Histogramme** (bar chart) et **Camembert** (doughnut base 100 — tranches = étapes, % de chaque étape sur le total). Replacement atomique des steps en DB via RPC PL/pgSQL (transaction Postgres, rollback automatique si crash au milieu). Persiste sur Supabase (memes tables qu'EDH, scope `auxerre`).
 
 ## En cours de developpement
 
