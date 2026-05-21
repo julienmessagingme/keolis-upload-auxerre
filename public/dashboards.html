@@ -96,6 +96,7 @@
                         <div class="inline-flex border border-keolis-blue rounded overflow-hidden text-xs">
                             <button id="vizModeFunnel" onclick="setVizMode('funnel')" class="px-2 py-1 bg-keolis-blue text-white">Entonnoir</button>
                             <button id="vizModeHistogram" onclick="setVizMode('histogram')" class="px-2 py-1 text-keolis-blue hover:bg-gray-100">Histogramme</button>
+                            <button id="vizModePie" onclick="setVizMode('pie')" class="px-2 py-1 text-keolis-blue hover:bg-gray-100">Camembert</button>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 mb-3 text-xs">
@@ -107,6 +108,7 @@
                     <div id="vizEmpty" class="text-gray-500 text-sm text-center py-12">Ajoutez des étapes et enregistrez pour voir la viz.</div>
                     <div id="vizFunnel" class="hidden"></div>
                     <canvas id="histChart" class="hidden" height="120"></canvas>
+                    <canvas id="pieChart" class="hidden" height="120"></canvas>
                 </div>
             </div>
         </div>
@@ -116,9 +118,17 @@
         let currentDashboard = null;
         let availableEvents = [];
         let histChart = null;
+        let pieChart = null;
         let vizMode = 'funnel';
         let lastVizData = null;
         let isDirty = false; // modifications en attente non sauvegardees ?
+
+        // Palette de tranches camembert : variations autour du bleu Keolis pour cohérence
+        // visuelle. Si > 10 tranches, on cycle (rare en pratique).
+        const PIE_COLORS = [
+            '#003366', '#0066cc', '#4a90d9', '#7ab3e6', '#a8cef0',
+            '#1a4d80', '#3373b3', '#5c9bd1', '#85bce0', '#b3d4e8',
+        ];
 
         function markDirty() {
             if (isDirty) return;
@@ -399,8 +409,11 @@
 
         function setVizMode(mode) {
             vizMode = mode;
-            document.getElementById('vizModeFunnel').className = mode === 'funnel' ? 'px-2 py-1 bg-keolis-blue text-white' : 'px-2 py-1 text-keolis-blue hover:bg-gray-100';
-            document.getElementById('vizModeHistogram').className = mode === 'histogram' ? 'px-2 py-1 bg-keolis-blue text-white' : 'px-2 py-1 text-keolis-blue hover:bg-gray-100';
+            const active = 'px-2 py-1 bg-keolis-blue text-white';
+            const inactive = 'px-2 py-1 text-keolis-blue hover:bg-gray-100';
+            document.getElementById('vizModeFunnel').className = mode === 'funnel' ? active : inactive;
+            document.getElementById('vizModeHistogram').className = mode === 'histogram' ? active : inactive;
+            document.getElementById('vizModePie').className = mode === 'pie' ? active : inactive;
             renderViz();
         }
 
@@ -429,25 +442,35 @@
             const vizEmpty = document.getElementById('vizEmpty');
             const vizFunnel = document.getElementById('vizFunnel');
             const histCanvas = document.getElementById('histChart');
+            const pieCanvas = document.getElementById('pieChart');
             if (histChart) { histChart.destroy(); histChart = null; }
+            if (pieChart) { pieChart.destroy(); pieChart = null; }
 
             if (stepsWithRefs.length === 0) {
                 vizEmpty.textContent = 'Ajoutez des étapes et enregistrez pour voir la viz.';
                 vizEmpty.classList.remove('hidden');
                 vizFunnel.classList.add('hidden');
                 histCanvas.classList.add('hidden');
+                pieCanvas.classList.add('hidden');
                 return;
             }
             vizEmpty.classList.add('hidden');
 
             if (vizMode === 'funnel') {
                 histCanvas.classList.add('hidden');
+                pieCanvas.classList.add('hidden');
                 vizFunnel.classList.remove('hidden');
                 drawFunnelSvg(stepsWithRefs);
-            } else {
+            } else if (vizMode === 'histogram') {
                 vizFunnel.classList.add('hidden');
+                pieCanvas.classList.add('hidden');
                 histCanvas.classList.remove('hidden');
                 drawHistogram(stepsWithRefs);
+            } else {
+                vizFunnel.classList.add('hidden');
+                histCanvas.classList.add('hidden');
+                pieCanvas.classList.remove('hidden');
+                drawPie(stepsWithRefs);
             }
         }
 
@@ -514,15 +537,62 @@
             });
         }
 
+        function drawPie(steps) {
+            const labels = steps.map((s) => s.label || s.refs.map((r) => r.label).join(' + '));
+            const data = steps.map((s) => s.total);
+            const grand = data.reduce((a, b) => a + b, 0);
+            const colors = labels.map((_, i) => PIE_COLORS[i % PIE_COLORS.length]);
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            pieChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#fff', borderWidth: 2 }] },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                generateLabels: (chart) => {
+                                    const ds = chart.data.datasets[0];
+                                    return chart.data.labels.map((lbl, i) => {
+                                        const v = ds.data[i] || 0;
+                                        const pct = grand > 0 ? ((v / grand) * 100).toFixed(1) : '0.0';
+                                        return {
+                                            text: `${lbl} — ${v} (${pct}%)`,
+                                            fillStyle: ds.backgroundColor[i],
+                                            strokeStyle: '#fff',
+                                            lineWidth: 2,
+                                            index: i,
+                                        };
+                                    });
+                                },
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const v = ctx.parsed || 0;
+                                    const pct = grand > 0 ? ((v / grand) * 100).toFixed(1) : '0.0';
+                                    return `${ctx.label}: ${v} (${pct}%)`;
+                                },
+                            },
+                        },
+                        title: { display: true, text: `Base 100 — ${lastVizData.fromStr} → ${lastVizData.toStr} (total ${grand})` },
+                    },
+                },
+            });
+        }
+
         // ========== TELECHARGEMENTS ==========
         function downloadChartPng() {
             if (!currentDashboard) return;
             const safeName = currentDashboard.name.replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
             const filename = `${safeName}_${vizMode}_${lastVizData?.fromStr || ''}_${lastVizData?.toStr || ''}.png`;
 
-            if (vizMode === 'histogram') {
-                if (!histChart) return;
-                const canvas = document.getElementById('histChart');
+            if (vizMode === 'histogram' || vizMode === 'pie') {
+                const chart = vizMode === 'histogram' ? histChart : pieChart;
+                if (!chart) return;
+                const canvas = document.getElementById(vizMode === 'histogram' ? 'histChart' : 'pieChart');
                 const tmp = document.createElement('canvas');
                 tmp.width = canvas.width; tmp.height = canvas.height;
                 const c = tmp.getContext('2d');
@@ -560,11 +630,13 @@
             lines.push('# Tableau,Periode_du,Periode_au');
             lines.push(`# ${csvEscape(currentDashboard.name)},${lastVizData.fromStr},${lastVizData.toStr}`);
             lines.push('');
-            lines.push('Position,Etape,Total,Refs_detail');
+            const grand = stepsWithRefs.reduce((a, s) => a + s.total, 0);
+            lines.push('Position,Etape,Total,Part_base_100_pct,Refs_detail');
             for (const s of stepsWithRefs) {
                 const stepLabel = s.label || s.refs.map((r) => r.label).join(' + ');
                 const refsDetail = s.refs.map((r) => `${r.label}=${r.count}`).join(' | ');
-                lines.push(`${s.position + 1},${csvEscape(stepLabel)},${s.total},${csvEscape(refsDetail)}`);
+                const pct = grand > 0 ? ((s.total / grand) * 100).toFixed(1) : '0.0';
+                lines.push(`${s.position + 1},${csvEscape(stepLabel)},${s.total},${pct},${csvEscape(refsDetail)}`);
             }
             const csv = '﻿' + lines.join('\n');
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
