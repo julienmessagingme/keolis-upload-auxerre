@@ -6,6 +6,14 @@
 
 ## Historique récent (livré)
 
+### 2026-05-21 — Mode viz camembert (LIVRE)
+
+3e mode de visualisation ajouté à `/dashboards.html` à côté de Entonnoir et
+Histogramme : doughnut Chart.js qui répartit les étapes du tableau en tranches,
+avec total + % base 100 en légende et tooltip. Aucun changement backend — le
+`total` par step était déjà calculé côté serveur. Export PNG et CSV adaptés
+(le CSV gagne une colonne `Part_base_100_pct`).
+
 ### 2026-05-04 — Mes tableaux (LIVRE)
 
 Module « Mes tableaux » deploye en prod. Plan d'execution dans
