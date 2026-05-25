@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
     <script>
         tailwind.config = { theme: { extend: { colors: { 'keolis-blue': '#003366', 'keolis-light': '#0066cc' } } } }
     </script>
@@ -103,6 +104,7 @@
                         <button onclick="refreshViz()" class="text-keolis-blue hover:underline">↻ Actualiser</button>
                         <span class="flex-1"></span>
                         <button onclick="downloadChartPng()" class="border border-gray-400 text-gray-700 px-2 py-1 rounded hover:bg-gray-100">⬇ PNG</button>
+                        <button onclick="downloadPdf()" class="border border-gray-400 text-gray-700 px-2 py-1 rounded hover:bg-gray-100">⬇ PDF</button>
                         <button onclick="downloadCsv()" class="border border-gray-400 text-gray-700 px-2 py-1 rounded hover:bg-gray-100">⬇ CSV</button>
                     </div>
                     <div id="vizEmpty" class="text-gray-500 text-sm text-center py-12">Ajoutez des étapes et enregistrez pour voir la viz.</div>
@@ -584,37 +586,117 @@
         }
 
         // ========== TELECHARGEMENTS ==========
-        function downloadChartPng() {
+
+        // Convertit la viz courante (funnel SVG, histogram canvas, pie canvas) en
+        // PNG dataURL avec fond blanc. Promise pour gérer img.onload du SVG.
+        // Resolve { dataUrl, width, height } pour permettre le ratio en PDF.
+        function getChartPngDataUrl() {
+            return new Promise((resolve, reject) => {
+                if (vizMode === 'histogram' || vizMode === 'pie') {
+                    const chart = vizMode === 'histogram' ? histChart : pieChart;
+                    if (!chart) return reject(new Error('Chart non rendu'));
+                    const canvas = document.getElementById(vizMode === 'histogram' ? 'histChart' : 'pieChart');
+                    const tmp = document.createElement('canvas');
+                    tmp.width = canvas.width; tmp.height = canvas.height;
+                    const c = tmp.getContext('2d');
+                    c.fillStyle = '#fff'; c.fillRect(0, 0, tmp.width, tmp.height);
+                    c.drawImage(canvas, 0, 0);
+                    resolve({ dataUrl: tmp.toDataURL('image/png'), width: tmp.width, height: tmp.height });
+                } else {
+                    const svgEl = document.querySelector('#vizFunnel svg');
+                    if (!svgEl) return reject(new Error('Pas de SVG funnel'));
+                    const xml = new XMLSerializer().serializeToString(svgEl);
+                    const svg64 = btoa(unescape(encodeURIComponent(xml)));
+                    const img = new Image();
+                    img.onload = () => {
+                        const tmp = document.createElement('canvas');
+                        tmp.width = svgEl.viewBox.baseVal.width * 2;
+                        tmp.height = svgEl.viewBox.baseVal.height * 2;
+                        const c = tmp.getContext('2d');
+                        c.fillStyle = '#fff'; c.fillRect(0, 0, tmp.width, tmp.height);
+                        c.drawImage(img, 0, 0, tmp.width, tmp.height);
+                        resolve({ dataUrl: tmp.toDataURL('image/png'), width: tmp.width, height: tmp.height });
+                    };
+                    img.onerror = () => reject(new Error('Conversion SVG impossible'));
+                    img.src = `data:image/svg+xml;base64,${svg64}`;
+                }
+            });
+        }
+
+        async function downloadChartPng() {
             if (!currentDashboard) return;
             const safeName = currentDashboard.name.replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
             const filename = `${safeName}_${vizMode}_${lastVizData?.fromStr || ''}_${lastVizData?.toStr || ''}.png`;
+            try {
+                const { dataUrl } = await getChartPngDataUrl();
+                triggerDownload(dataUrl, filename);
+            } catch (err) {
+                alert(`Erreur PNG : ${err.message}`);
+            }
+        }
 
-            if (vizMode === 'histogram' || vizMode === 'pie') {
-                const chart = vizMode === 'histogram' ? histChart : pieChart;
-                if (!chart) return;
-                const canvas = document.getElementById(vizMode === 'histogram' ? 'histChart' : 'pieChart');
-                const tmp = document.createElement('canvas');
-                tmp.width = canvas.width; tmp.height = canvas.height;
-                const c = tmp.getContext('2d');
-                c.fillStyle = '#fff'; c.fillRect(0, 0, tmp.width, tmp.height);
-                c.drawImage(canvas, 0, 0);
-                triggerDownload(tmp.toDataURL('image/png'), filename);
-            } else {
-                // SVG -> PNG via Image + Canvas
-                const svgEl = document.querySelector('#vizFunnel svg');
-                if (!svgEl) return;
-                const xml = new XMLSerializer().serializeToString(svgEl);
-                const svg64 = btoa(unescape(encodeURIComponent(xml)));
-                const img = new Image();
-                img.onload = () => {
-                    const tmp = document.createElement('canvas');
-                    tmp.width = svgEl.viewBox.baseVal.width * 2; tmp.height = svgEl.viewBox.baseVal.height * 2;
-                    const c = tmp.getContext('2d');
-                    c.fillStyle = '#fff'; c.fillRect(0, 0, tmp.width, tmp.height);
-                    c.drawImage(img, 0, 0, tmp.width, tmp.height);
-                    triggerDownload(tmp.toDataURL('image/png'), filename);
-                };
-                img.src = `data:image/svg+xml;base64,${svg64}`;
+        async function downloadPdf() {
+            if (!currentDashboard || !lastVizData) { alert('Pas de données — chargez d\'abord la viz.'); return; }
+            if (!window.jspdf) { alert('jsPDF non chargé'); return; }
+            const safeName = currentDashboard.name.replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
+            const filename = `${safeName}_${vizMode}_${lastVizData.fromStr}_${lastVizData.toStr}.pdf`;
+            try {
+                const { dataUrl, width: imgPxW, height: imgPxH } = await getChartPngDataUrl();
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const pageW = doc.internal.pageSize.getWidth();
+                const pageH = doc.internal.pageSize.getHeight();
+
+                // En-tête
+                doc.setFontSize(16);
+                doc.setTextColor(0, 51, 102);
+                doc.text(String(currentDashboard.name), 14, 16);
+                doc.setFontSize(10);
+                doc.setTextColor(80, 80, 80);
+                const modeLabel = vizMode === 'funnel' ? 'Entonnoir' : vizMode === 'histogram' ? 'Histogramme' : 'Camembert (base 100)';
+                // helvetica PDF standard = WinAnsi, pas de U+2192 ni U+00B7 fiable
+                doc.text(`${modeLabel} - du ${lastVizData.fromStr} au ${lastVizData.toStr}`, 14, 23);
+
+                // Image du chart — fit dans la moitié haute (laisse de la place au tableau récap)
+                const stepsWithRefs = (lastVizData.steps || []).filter((s) => s.refs.length > 0);
+                const grand = stepsWithRefs.reduce((a, s) => a + s.total, 0);
+                const tableLines = Math.min(stepsWithRefs.length, 20);
+                const reservedTable = 18 + tableLines * 5; // titre + footer + lignes
+                const maxImgW = pageW - 28;
+                const maxImgH = pageH - 30 - reservedTable;
+                const ratio = imgPxW / imgPxH;
+                let imgW = maxImgW, imgH = maxImgW / ratio;
+                if (imgH > maxImgH) { imgH = maxImgH; imgW = maxImgH * ratio; }
+                doc.addImage(dataUrl, 'PNG', (pageW - imgW) / 2, 28, imgW, imgH);
+
+                // Tableau récap sous l'image
+                let y = 28 + imgH + 8;
+                doc.setFontSize(10);
+                doc.setTextColor(0, 51, 102);
+                doc.text(`Détail (total : ${grand})`, 14, y);
+                y += 5;
+                doc.setFontSize(9);
+                doc.setTextColor(60, 60, 60);
+                for (let i = 0; i < stepsWithRefs.length; i++) {
+                    if (y > pageH - 10) {
+                        doc.text(`... (${stepsWithRefs.length - i} etape${stepsWithRefs.length - i > 1 ? 's' : ''} non affichee${stepsWithRefs.length - i > 1 ? 's' : ''})`, 14, y);
+                        break;
+                    }
+                    const s = stepsWithRefs[i];
+                    const lbl = s.label || s.refs.map((r) => r.label).join(' + ');
+                    const pct = grand > 0 ? ((s.total / grand) * 100).toFixed(1) : '0.0';
+                    doc.text(`${i + 1}. ${lbl} — ${s.total} (${pct}%)`, 14, y);
+                    y += 5;
+                }
+
+                // Footer
+                doc.setFontSize(7);
+                doc.setTextColor(150, 150, 150);
+                doc.text(`Genere le ${new Date().toLocaleString('fr-FR')} - Keolis Auxerre`, 14, pageH - 5);
+
+                doc.save(filename);
+            } catch (err) {
+                alert(`Erreur PDF : ${err.message}`);
             }
         }
 
