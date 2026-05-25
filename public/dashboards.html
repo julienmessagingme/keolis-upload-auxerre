@@ -62,9 +62,9 @@
                     <input id="builderName" type="text" class="text-xl font-bold text-keolis-blue border-b-2 border-transparent focus:border-keolis-blue focus:outline-none w-full" placeholder="Nom du tableau">
                 </div>
                 <div class="flex items-center gap-2 flex-wrap justify-end">
-                    <input id="vizDateFrom" type="date" class="border rounded-lg px-2 py-1 text-sm">
+                    <input id="vizDateFrom" type="date" class="border rounded-lg px-2 py-1 text-sm" onchange="onDateChange()">
                     <span class="text-gray-500 text-sm">→</span>
-                    <input id="vizDateTo" type="date" class="border rounded-lg px-2 py-1 text-sm">
+                    <input id="vizDateTo" type="date" class="border rounded-lg px-2 py-1 text-sm" onchange="onDateChange()">
                     <button onclick="setVizPreset(7)" class="border border-keolis-blue text-keolis-blue px-2 py-1 rounded text-xs hover:bg-keolis-blue hover:text-white">7j</button>
                     <button onclick="setVizPreset(30)" class="border border-keolis-blue text-keolis-blue px-2 py-1 rounded text-xs hover:bg-keolis-blue hover:text-white">30j</button>
                     <button onclick="setVizPreset(90)" class="border border-keolis-blue text-keolis-blue px-2 py-1 rounded text-xs hover:bg-keolis-blue hover:text-white">90j</button>
@@ -107,7 +107,7 @@
                         <button onclick="downloadPdf()" class="border border-gray-400 text-gray-700 px-2 py-1 rounded hover:bg-gray-100">⬇ PDF</button>
                         <button onclick="downloadCsv()" class="border border-gray-400 text-gray-700 px-2 py-1 rounded hover:bg-gray-100">⬇ CSV</button>
                     </div>
-                    <div id="vizEmpty" class="text-gray-500 text-sm text-center py-12">Ajoutez des étapes et enregistrez pour voir la viz.</div>
+                    <div id="vizEmpty" class="text-gray-500 text-sm text-center py-12">Glissez des events vers des étapes — la viz se met à jour en direct.</div>
                     <div id="vizFunnel" class="hidden"></div>
                     <canvas id="histChart" class="hidden" height="120"></canvas>
                     <canvas id="pieChart" class="hidden" height="120"></canvas>
@@ -119,6 +119,8 @@
     <script>
         let currentDashboard = null;
         let availableEvents = [];
+        let countByEventNs = {};     // event_ns -> count sur la période chargée
+        let countsForPeriod = null;  // clé "from_to" de la période actuellement en cache
         let histChart = null;
         let pieChart = null;
         let vizMode = 'funnel';
@@ -222,21 +224,21 @@
                 document.getElementById('vizDateTo').value = today.toISOString().slice(0, 10);
             }
 
-            const [dashRes, evRes] = await Promise.all([
-                fetch(`/api/dashboards/${encodeURIComponent(id)}`, { cache: 'no-store' }),
-                fetch('/api/stats/custom-events?from=2020-01-01&to=2099-12-31', { cache: 'no-store' }),
-            ]);
+            const fromStr = document.getElementById('vizDateFrom').value;
+            const toStr = document.getElementById('vizDateTo').value;
+            const dashRes = await fetch(`/api/dashboards/${encodeURIComponent(id)}`, { cache: 'no-store' });
             if (!dashRes.ok) { alert(`Erreur ${dashRes.status} chargement tableau`); closeBuilder(); return; }
-            if (!evRes.ok) { alert(`Erreur ${evRes.status} chargement palette`); closeBuilder(); return; }
             const { dashboard } = await dashRes.json();
-            const { events } = await evRes.json();
-
             currentDashboard = dashboard;
-            availableEvents = events || [];
+
+            // Charge counts sur la période courante (palette + viz utilisent les mêmes)
+            try { await loadCountsForPeriod(fromStr, toStr); }
+            catch (e) { alert(`Erreur chargement events : ${e.message}`); closeBuilder(); return; }
+
             document.getElementById('builderName').value = dashboard.name;
-            renderPalette();
+            // renderPalette() est déjà appelé par loadCountsForPeriod
             renderSteps(dashboard.steps || []);
-            refreshViz();
+            renderViz();
             markClean();
             // Watch les changements de label/nom pour mark dirty
             document.getElementById('builderName').addEventListener('input', markDirty);
@@ -249,8 +251,12 @@
             document.getElementById('builderView').classList.add('hidden');
             document.getElementById('listView').classList.remove('hidden');
             if (histChart) { histChart.destroy(); histChart = null; }
+            if (pieChart) { pieChart.destroy(); pieChart = null; }
             currentDashboard = null;
             lastVizData = null;
+            countsForPeriod = null;
+            countByEventNs = {};
+            availableEvents = [];
             markClean();
             loadList();
         }
@@ -263,7 +269,10 @@
             }
             c.innerHTML = availableEvents.map(ev => `
                 <div class="palette-item bg-gray-100 hover:bg-gray-200 rounded p-2 cursor-grab text-xs" data-event-ns="${escapeAttr(ev.event_ns)}" data-event-name="${escapeAttr(ev.name)}">
-                    <div class="font-semibold text-keolis-blue truncate">${escapeHtml(ev.name)}</div>
+                    <div class="flex items-center justify-between gap-1">
+                        <div class="font-semibold text-keolis-blue truncate">${escapeHtml(ev.name)}</div>
+                        <span class="text-[10px] text-gray-500 flex-shrink-0">${ev.count ?? 0}</span>
+                    </div>
                     ${ev.description ? `<div class="text-[10px] text-gray-600 truncate">${escapeHtml(ev.description)}</div>` : ''}
                 </div>
             `).join('');
@@ -276,7 +285,7 @@
                 c.innerHTML = `<div id="emptyStepsZone" class="text-gray-500 text-xs text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">Glissez un event ici pour créer la 1ère étape.</div>`;
                 Sortable.create(document.getElementById('emptyStepsZone'), {
                     group: { name: 'events', pull: false, put: true },
-                    onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); markDirty(); },
+                    onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); },
                 });
                 return;
             }
@@ -289,10 +298,12 @@
             // Zone drop pour creer une nouvelle step en bas
             Sortable.create(document.getElementById('newStepDropZone'), {
                 group: { name: 'events', pull: false, put: true },
-                onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); markDirty(); },
+                onAdd: (evt) => { const i = evt.item; const ns = i.dataset.eventNs; const nm = i.dataset.eventName; i.remove(); addStepWithRef(ns, nm); },
             });
-            // Watch input des labels de step pour mark dirty
-            c.querySelectorAll('.step-label-input').forEach((inp) => inp.addEventListener('input', markDirty));
+            // Watch input des labels de step pour mark dirty + relancer la viz (debounce léger)
+            c.querySelectorAll('.step-label-input').forEach((inp) => {
+                inp.addEventListener('input', () => { markDirty(); debouncedRenderViz(); });
+            });
         }
 
         function stepHtml(step, idx) {
@@ -331,10 +342,23 @@
                         tag.innerHTML = `${escapeHtml(nm)} <button onclick="removeRef(this)" class="hover:bg-keolis-blue rounded px-1">×</button>`;
                         refs.appendChild(tag);
                         markDirty();
+                        renderViz();
                     },
                 });
             });
-            Sortable.create(document.getElementById('steps'), { animation: 150, handle: '.step-card', group: 'steps-reorder', onEnd: markDirty });
+            Sortable.create(document.getElementById('steps'), {
+                animation: 150,
+                handle: '.step-card',
+                group: 'steps-reorder',
+                onEnd: () => { markDirty(); renderViz(); },
+            });
+        }
+
+        // Debounce léger pour les inputs de label (évite destroy/create Chart.js à chaque keystroke)
+        let renderVizDebounce = null;
+        function debouncedRenderViz() {
+            clearTimeout(renderVizDebounce);
+            renderVizDebounce = setTimeout(renderViz, 250);
         }
 
         function addStepWithRef(ns, nm) {
@@ -342,10 +366,11 @@
             cur.push({ label: null, refs: [{ event_ns: ns }] });
             renderSteps(cur);
             markDirty();
+            renderViz();
         }
-        function addEmptyStep() { const cur = collectStepsFromDOM(); cur.push({ label: null, refs: [] }); renderSteps(cur); markDirty(); }
-        function removeStep(btn) { btn.closest('.step-card').remove(); renderSteps(collectStepsFromDOM()); markDirty(); }
-        function removeRef(btn) { btn.closest('span[data-event-ns]').remove(); markDirty(); }
+        function addEmptyStep() { const cur = collectStepsFromDOM(); cur.push({ label: null, refs: [] }); renderSteps(cur); markDirty(); renderViz(); }
+        function removeStep(btn) { btn.closest('.step-card').remove(); renderSteps(collectStepsFromDOM()); markDirty(); renderViz(); }
+        function removeRef(btn) { btn.closest('span[data-event-ns]').remove(); markDirty(); renderViz(); }
 
         function collectStepsFromDOM() {
             const steps = [];
@@ -401,12 +426,23 @@
         }
 
         // ========== VIZ ==========
-        function setVizPreset(days) {
+        async function onDateChange() {
+            const fromStr = document.getElementById('vizDateFrom').value;
+            const toStr = document.getElementById('vizDateTo').value;
+            if (!fromStr || !toStr) return;
+            try { await loadCountsForPeriod(fromStr, toStr); } catch (e) { alert(`Erreur : ${e.message}`); return; }
+            renderViz();
+        }
+
+        async function setVizPreset(days) {
             const to = new Date();
             const from = new Date(); from.setDate(from.getDate() - days + 1);
-            document.getElementById('vizDateFrom').value = from.toISOString().slice(0, 10);
-            document.getElementById('vizDateTo').value = to.toISOString().slice(0, 10);
-            refreshViz();
+            const fromStr = from.toISOString().slice(0, 10);
+            const toStr = to.toISOString().slice(0, 10);
+            document.getElementById('vizDateFrom').value = fromStr;
+            document.getElementById('vizDateTo').value = toStr;
+            try { await loadCountsForPeriod(fromStr, toStr); } catch (e) { alert(`Erreur : ${e.message}`); return; }
+            renderViz();
         }
 
         function setVizMode(mode) {
@@ -419,28 +455,63 @@
             renderViz();
         }
 
+        // Charge les counts par event_ns pour la période donnée. Mémorise pour
+        // éviter de re-fetch si l'user n'a pas changé la période. Met à jour
+        // availableEvents (les events dispo) ET countByEventNs (les counts).
+        async function loadCountsForPeriod(fromStr, toStr) {
+            if (!fromStr || !toStr) return;
+            const key = `${fromStr}_${toStr}`;
+            if (countsForPeriod === key) return;
+            const r = await fetch(`/api/stats/custom-events?from=${fromStr}&to=${toStr}`, { cache: 'no-store' });
+            if (!r.ok) { countsForPeriod = null; throw new Error(`HTTP ${r.status}`); }
+            const { events } = await r.json();
+            availableEvents = events || [];
+            countByEventNs = Object.fromEntries(availableEvents.map((e) => [e.event_ns, e.count || 0]));
+            countsForPeriod = key;
+            // La palette affiche les counts → la rafraîchir aussi quand les counts changent
+            if (document.getElementById('palette')) renderPalette();
+        }
+
+        // "Actualiser" = re-fetch les counts depuis serveur (utile si nouveau sync MM),
+        // puis re-render. La modif locale des steps ne passe PAS par là.
         async function refreshViz() {
             if (!currentDashboard) return;
             const fromStr = document.getElementById('vizDateFrom').value;
             const toStr = document.getElementById('vizDateTo').value;
             if (!fromStr || !toStr) return;
-
-            const r = await fetch(`/api/dashboards/${encodeURIComponent(currentDashboard.id)}/data?from=${fromStr}&to=${toStr}`, { cache: 'no-store' });
-            if (!r.ok) {
-                document.getElementById('vizEmpty').textContent = `Erreur HTTP ${r.status}`;
+            countsForPeriod = null; // force re-fetch
+            try { await loadCountsForPeriod(fromStr, toStr); }
+            catch (e) {
+                document.getElementById('vizEmpty').textContent = `Erreur HTTP : ${e.message}`;
                 document.getElementById('vizEmpty').classList.remove('hidden');
                 document.getElementById('vizFunnel').classList.add('hidden');
                 document.getElementById('histChart').classList.add('hidden');
+                document.getElementById('pieChart').classList.add('hidden');
                 return;
             }
-            const data = await r.json();
-            lastVizData = { ...data, fromStr, toStr };
             renderViz();
         }
 
+        // Recalcule la viz à partir de l'état DOM des steps + countByEventNs en cache.
+        // Appelée à chaque modification locale (drag, add, remove, reorder, label).
+        // Aucune requête réseau ici → instantané.
         function renderViz() {
-            if (!lastVizData) return;
-            const stepsWithRefs = (lastVizData.steps || []).filter((s) => s.refs.length > 0);
+            const fromStr = document.getElementById('vizDateFrom').value || '';
+            const toStr = document.getElementById('vizDateTo').value || '';
+            const domSteps = collectStepsFromDOM().filter((s) => s.refs.length > 0);
+            const stepsWithRefs = domSteps.map((s, i) => {
+                const refs = s.refs.map((r) => {
+                    const ev = availableEvents.find((e) => e.event_ns === r.event_ns);
+                    return {
+                        event_ns: r.event_ns,
+                        label: ev ? ev.name : '(indisponible)',
+                        count: countByEventNs[r.event_ns] || 0,
+                    };
+                });
+                const total = refs.reduce((a, x) => a + x.count, 0);
+                return { position: i, label: s.label, refs, total };
+            });
+            lastVizData = { from: fromStr, to: toStr, fromStr, toStr, steps: stepsWithRefs };
             const vizEmpty = document.getElementById('vizEmpty');
             const vizFunnel = document.getElementById('vizFunnel');
             const histCanvas = document.getElementById('histChart');
@@ -449,7 +520,7 @@
             if (pieChart) { pieChart.destroy(); pieChart = null; }
 
             if (stepsWithRefs.length === 0) {
-                vizEmpty.textContent = 'Ajoutez des étapes et enregistrez pour voir la viz.';
+                vizEmpty.textContent = 'Glissez des events vers des étapes — la viz se met à jour en direct.';
                 vizEmpty.classList.remove('hidden');
                 vizFunnel.classList.add('hidden');
                 histCanvas.classList.add('hidden');
