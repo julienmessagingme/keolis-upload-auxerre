@@ -8,8 +8,9 @@ const SCHOOL_SLUG = 'auxerre';
  * Pour chaque event :
  *   1. Upsert le catalogue dans mm_events.
  *   2. Recupere le watermark (last_occurrence_id) depuis mm_sync_state.
- *   3. Itere les occurrences (most-recent-first), insere celles dont
- *      id > watermark, s'arrete des qu'on rencontre id <= watermark.
+ *   3. Recupere les occurrences via start_id = watermark+1 (l'API pagine en
+ *      ordre croissant et filtre cote serveur sur id >= start_id), et insere
+ *      toutes les pages.
  *   4. Met a jour mm_sync_state (nouveau watermark + last_run_at + status).
  *
  * Idempotent : run plusieurs fois ne duplique pas les rows
@@ -109,12 +110,17 @@ async function syncEventOccurrences(sb, client, eventNs) {
   let inserted = 0;
   let newWatermark = watermark;
 
-  for await (const batch of client.iterOccurrences(eventNs)) {
+  // start_id = watermark : l'API filtre cote serveur sur id > start_id (borne
+  // EXCLUSIVE, verifiee en live) et pagine en ordre croissant. On insere donc
+  // uniquement les occurrences nouvelles, sur toutes les pages, sans break
+  // precoce (l'ancienne logique supposait a tort un ordre most-recent-first et
+  // ratait les nouvelles occurrences arrivant sur les dernieres pages des
+  // events multi-pages).
+  for await (const batch of client.iterOccurrences(eventNs, watermark)) {
+    // Garde-fou : on ne garde que le neuf (et filtre le watermark lui-meme
+    // dans le cas full-scan watermark=0 ou start_id est omis).
     const fresh = batch.filter((o) => Number(o.id) > watermark);
-    if (fresh.length === 0) {
-      // les rows >watermark sont epuisees pour cet event
-      break;
-    }
+    if (fresh.length === 0) continue;
 
     const rows = fresh.map((o) => ({
       id: Number(o.id),
@@ -136,10 +142,6 @@ async function syncEventOccurrences(sb, client, eventNs) {
     inserted += rows.length;
     const maxIdInBatch = Math.max(...rows.map((r) => r.id));
     if (maxIdInBatch > newWatermark) newWatermark = maxIdInBatch;
-
-    // Si la batch contenait des rows <= watermark melees, on arrete
-    // (la suite des pages contient des rows encore plus anciennes)
-    if (fresh.length < batch.length) break;
   }
 
   if (newWatermark > watermark) {

@@ -7,6 +7,11 @@
  *   const events = await c.listEvents();
  *   for await (const batch of c.iterOccurrences(eventNs)) { ... }
  */
+
+// Taille de page pour /flow/custom-events/data. 100 est OK cote API ;
+// au-dela (ex. 500) l'endpoint renvoie une reponse vide.
+const PAGE_LIMIT = 100;
+
 class MessagingMeClient {
   constructor(token, base) {
     if (!token) throw new Error('MessagingMeClient: token manquant');
@@ -47,14 +52,26 @@ class MessagingMeClient {
   }
 
   /**
-   * Itere les occurrences d'un event, page par page (most-recent-first).
+   * Itere les occurrences d'un event, page par page.
+   * L'API renvoie les occurrences par id CROISSANT (les plus anciennes d'abord).
+   * `start_id` filtre cote serveur sur id > startId (borne EXCLUSIVE) : on ne
+   * recupere donc que les occurrences nouvelles depuis le watermark, sans
+   * rescanner les anciennes.
    * yield un array d'occurrences par page.
+   *
+   * @param {string} eventNs
+   * @param {number} startId  exclu : ne renvoie que id > startId (0 = tout)
    */
-  async *iterOccurrences(eventNs) {
+  async *iterOccurrences(eventNs, startId = 0) {
     let page = 1;
     while (true) {
-      const url = `${this.base}/flow/custom-events/data?event_ns=${encodeURIComponent(eventNs)}&page=${page}`;
-      const r = await this._fetch(url);
+      const params = new URLSearchParams({
+        event_ns: eventNs,
+        page: String(page),
+        limit: String(PAGE_LIMIT),
+      });
+      if (startId > 0) params.set('start_id', String(startId));
+      const r = await this._fetch(`${this.base}/flow/custom-events/data?${params}`);
       const j = await r.json();
       const data = j.data || [];
       if (data.length === 0) break;
