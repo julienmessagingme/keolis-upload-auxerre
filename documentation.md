@@ -22,15 +22,18 @@ Pour le detail exhaustif (couches de securite, schema DB, flow auth complet, etc
 ```
 keolis-upload-auxerre/
 ├── .github/workflows/deploy.yml  # CI/CD auto-deploy
+├── scripts/
+│   └── parse-schedule.js      # Outil de BUILD : PDF horaire -> JSON (pdfjs coords, devDep)
 ├── src/
 │   ├── server.js              # Bootstrap (charge .env, demarre Express)
 │   ├── app.js                 # Config Express + montage des routes
 │   ├── config/                # database, email, session, storage, index
-│   ├── features/              # auth, schedules, news, knowledge, surveys
+│   ├── features/              # auth, schedules, news, knowledge, surveys, stats, dashboards, bus-agent
 │   │   └── <feature>/
 │   │       ├── *.controller.js  # Handlers HTTP
 │   │       ├── *.service.js     # Logique metier
 │   │       ├── *.routes.js      # Definition routes
+│   │       ├── data/            # (bus-agent) grilles horaires JSON committees
 │   │       └── index.js         # Export { routes }
 │   ├── middleware/            # auth (requireAuth/Admin), errorHandler, upload (multer), validation
 │   └── services/              # database (SQLite), email, openai, pdf, storage (B2), webhook
@@ -97,13 +100,18 @@ MESSAGINGME_API_TOKEN=<...>
 NEWS_WEBHOOK_URL=https://ai.messagingme.app/api/iwh/<...>
 SURVEY_WEBHOOK_TOKEN=<...>
 
-# A AJOUTER pour le module stats (cf. wip.md)
+# Module stats
 SUPABASE_URL=<...>
 SUPABASE_SERVICE_ROLE_KEY=<...>
 MM_TOKEN_AUXERRE=<bearer pour /flow/custom-events>
 MESSAGINGME_BASE=https://ai.messagingme.app/api
 INTERNAL_API_KEY=<random hex 64 pour /api/cron/sync>
+
+# Agent horaires bus (/api/bus) — appele par le flow WhatsApp
+BUS_AGENT_TOKEN=<random hex 32 ; header x-api-key ou ?token=>
 ```
+
+Si `BUS_AGENT_TOKEN` est absent, l'endpoint `/api/bus/*` renvoie 401 systematiquement (ferme par defaut).
 
 ## Schema DB SQLite
 
@@ -119,7 +127,7 @@ Tables principales (`data/knowledge.db`) :
 
 1. **Infra** : ports Docker bindes 127.0.0.1 (sauf 3000:3000 ici), reverse proxy HTTPS via NPM + Let's Encrypt
 2. **Headers** : Helmet (CSP, HSTS, X-Frame-Options, nosniff, referrer-policy)
-3. **Rate limit** : 100/min global, 5/15min login, 30/min webhook surveys
+3. **Rate limit** : 100/min global, 5/15min login, 30/min webhook surveys, 60/min agent bus
 4. **Brute force** : lockout applicatif 5 echecs login → IP bloquee 15 min
 5. **Sessions** : httpOnly + secure + sameSite strict + 8h maxAge + regen au login
 6. **Auth** : invitation only, bcrypt (10 rounds), tokens crypto 64 hex, roles admin/user

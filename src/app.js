@@ -14,6 +14,7 @@ const knowledgeFeature = require('./features/knowledge');
 const surveysFeature = require('./features/surveys');
 const statsFeature = require('./features/stats');
 const dashboardsFeature = require('./features/dashboards');
+const busFeature = require('./features/bus-agent');
 
 // Initialiser la base de données
 config.database.initialize();
@@ -73,6 +74,15 @@ function createApp() {
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'Trop de requêtes webhook' }
+  }));
+
+  // Rate limiting sur l'agent horaires bus (60 req/min — appele par le flow WhatsApp)
+  app.use('/api/bus', rateLimit({
+    windowMs: 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Trop de requêtes' }
   }));
 
   // =========== CORS ===========
@@ -147,6 +157,9 @@ function createApp() {
 
   // Routes des tableaux personnels (/api/dashboards/*)
   app.use('/api/dashboards', dashboardsFeature.routes);
+
+  // Routes de l'agent horaires bus (/api/bus/*) — appele par le flow WhatsApp
+  app.use('/api/bus', busFeature.routes);
 
   // =========== ROUTES DES PAGES PROTÉGÉES ===========
 

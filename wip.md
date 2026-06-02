@@ -6,6 +6,29 @@
 
 ## Historique récent (livré)
 
+### 2026-06-02 : Agent horaires bus (LIVRE)
+
+Endpoint HTTP appele par un flow WhatsApp existant (SmartLink) pour repondre
+"prochains passages" a partir d'un arret + une heure, dans les DEUX sens.
+
+Decision cle : Gemini 2.5 Pro teste pour lire la grille PDF, juge inexploitable
+(arrets inventes, ~moitie des courses perdues, 178s de latence). Abandonne. La
+fiche horaire a une couche texte propre : on l'extrait hors runtime avec les
+coordonnees (x,y) via pdfjs-dist (devDependency), ce qui est exact et instantane.
+
+- `scripts/parse-schedule.js` : outil de BUILD (pdfjs coords). Genere un JSON
+  verifie. `npm run parse:schedule <pdf> <ligne>`.
+- `src/features/bus-agent/data/ligne-1.json` : grille committee (2 sens, 30 arrets
+  chacun, ~55 courses/sens). Le runtime ne lit jamais le PDF.
+- `bus.service.js` : lookup deterministe, comparaison en MINUTES depuis minuit
+  (pas en chaine), matching arret insensible aux accents/casse, renvoie les 2 sens
+  + un `message` pret a envoyer.
+- `GET /api/bus/next?ligne=1&arret=...&heure=HH:MM&n=3` et
+  `GET /api/bus/stops?ligne=1`. Auth par jeton `BUS_AGENT_TOKEN` (header
+  `x-api-key` ou `?token=`, compare en temps constant), rate-limit 60 req/min.
+
+Pour ajouter une ligne : `npm run parse:schedule <pdf> <n>` puis commit du JSON.
+
 ### 2026-05-21 — Mode viz camembert (LIVRE)
 
 3e mode de visualisation ajouté à `/dashboards.html` à côté de Entonnoir et

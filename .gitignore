@@ -1,3 +1,4 @@
 node_modules/
 .env
-data/
+# Volume runtime root uniquement (SQLite, users.json) ; pas les data/ des features (grilles bus committees)
+/data/
