@@ -21,8 +21,11 @@ coordonnees (x,y) via pdfjs-dist (devDependency), ce qui est exact et instantane
 - `src/features/bus-agent/data/ligne-1.json` : grille committee (2 sens, 30 arrets
   chacun, ~55 courses/sens). Le runtime ne lit jamais le PDF.
 - `bus.service.js` : lookup deterministe, comparaison en MINUTES depuis minuit
-  (pas en chaine), matching arret insensible aux accents/casse, renvoie les 2 sens
-  + un `message` pret a envoyer.
+  (pas en chaine), renvoie les 2 sens + un `message` pret a envoyer. Resolution du
+  nom d'arret en 3 etapes : exact (accents/casse ignores) -> sous-chaine (>=3 car.)
+  -> flou (distance d'edition en sous-chaine approximative, >=4 car., seuil ~1 faute
+  / 3 car.). Tolere les fautes de frappe car tous les flows WhatsApp ne passent pas
+  forcement par un selecteur.
 - `GET /api/bus/next?ligne=1&arret=...&heure=HH:MM&n=3` et
   `GET /api/bus/stops?ligne=1`. Auth par jeton `BUS_AGENT_TOKEN` (header
   `x-api-key` ou `?token=`, compare en temps constant), rate-limit 60 req/min.

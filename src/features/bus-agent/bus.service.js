@@ -72,6 +72,19 @@ function loadLignes() {
         for (const arret of sens.arrets) byStop.set(normalize(arret.nom), arret);
         return byStop;
       });
+      // union des arrets (sans doublon) avec leur forme normalisee, pour la
+      // resolution d'un nom saisi (exact / sous-chaine / flou) et le selecteur
+      const seen = new Set();
+      data._allStops = [];
+      for (const sens of data.sens) {
+        for (const a of sens.arrets) {
+          const norm = normalize(a.nom);
+          if (!seen.has(norm)) {
+            seen.add(norm);
+            data._allStops.push({ nom: a.nom, norm });
+          }
+        }
+      }
       map.set(String(data.ligne), data);
     } catch (err) {
       console.error('[bus] Grille illisible:', file, err.message);
@@ -86,13 +99,58 @@ function getLigne(ligne) {
   return LIGNES.get(String(ligne).trim());
 }
 
-/** Trouve l'arret dans un sens : exact normalise, sinon "contient". */
-function findArret(sens, index, normArret) {
-  if (index.has(normArret)) return index.get(normArret);
-  for (const arret of sens.arrets) {
-    if (normalize(arret.nom).includes(normArret)) return arret;
+/**
+ * Distance d'edition minimale pour retrouver `needle` comme sous-chaine
+ * APPROXIMATIVE de `hay` (le match peut commencer n'importe ou dans hay : la
+ * 1re ligne de la matrice est a 0). Tolere une faute de frappe n'importe ou
+ * dans le fragment saisi, pas seulement en fin. Levenshtein classique sinon.
+ */
+function fuzzyContainsDistance(needle, hay) {
+  const n = needle.length;
+  const m = hay.length;
+  if (n === 0) return 0;
+  let prev = new Array(m + 1).fill(0); // depart possible a toute position de hay
+  for (let i = 1; i <= n; i++) {
+    const cur = new Array(m + 1);
+    cur[0] = i;
+    for (let j = 1; j <= m; j++) {
+      const cost = needle[i - 1] === hay[j - 1] ? 0 : 1;
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+    }
+    prev = cur;
   }
-  return null;
+  return Math.min(...prev);
+}
+
+/**
+ * Resout un nom saisi vers le nom canonique d'un arret de la ligne.
+ * Ordre : exact normalise -> sous-chaine -> flou (distance d'edition). Le flou
+ * n'est tente que pour une saisie d'au moins 4 caracteres et sous un seuil
+ * proportionnel a sa longueur (~1 faute par 3 caracteres), pour eviter les
+ * faux positifs. Renvoie le nom canonique ou null.
+ */
+function resolveStopName(allStops, normQuery) {
+  if (!normQuery) return null;
+  const exact = allStops.find((s) => s.norm === normQuery);
+  if (exact) return exact.nom;
+  // sous-chaine : a partir de 3 caracteres (en deca, trop ambigu -> on rejette)
+  const subs = normQuery.length >= 3 ? allStops.filter((s) => s.norm.includes(normQuery)) : [];
+  if (subs.length) {
+    subs.sort((a, b) => a.norm.length - b.norm.length); // match le plus serre
+    return subs[0].nom;
+  }
+  if (normQuery.length < 4) return null;
+  const maxDist = Math.max(1, Math.floor(normQuery.length / 3));
+  let best = null;
+  let bestDist = Infinity;
+  for (const s of allStops) {
+    const d = fuzzyContainsDistance(normQuery, s.norm);
+    if (d < bestDist) {
+      bestDist = d;
+      best = s;
+    }
+  }
+  return bestDist <= maxDist ? best.nom : null;
 }
 
 class BusService {
@@ -108,18 +166,7 @@ class BusService {
   listStops({ ligne }) {
     const data = getLigne(ligne);
     if (!data) return { success: false, error: `Ligne ${ligne} inconnue`, lignes: this.listLignes() };
-    const seen = new Set();
-    const arrets = [];
-    for (const sens of data.sens) {
-      for (const a of sens.arrets) {
-        const key = normalize(a.nom);
-        if (!seen.has(key)) {
-          seen.add(key);
-          arrets.push(a.nom);
-        }
-      }
-    }
-    return { success: true, ligne: String(data.ligne), arrets };
+    return { success: true, ligne: String(data.ligne), arrets: data._allStops.map((s) => s.nom) };
   }
 
   /**
@@ -141,25 +188,36 @@ class BusService {
     const count = Math.min(Math.max(parseInt(n, 10) || 3, 1), 10);
     const normArret = normalize(arret);
 
+    const canonNom = resolveStopName(data._allStops, normArret);
+    if (!canonNom) {
+      return {
+        success: false,
+        error: `Arret "${arret}" introuvable sur la ligne ${ligne}`,
+        arrets: data._allStops.map((s) => s.nom),
+      };
+    }
+    const normCanon = normalize(canonNom);
+
     const sensResults = [];
-    let canonNom = null;
     data.sens.forEach((sens, i) => {
-      const arretObj = findArret(sens, data._index[i], normArret);
-      if (!arretObj) return;
-      canonNom = arretObj.nom;
+      const arretObj = data._index[i].get(normCanon);
+      if (!arretObj) return; // ce sens ne dessert pas cet arret
       // A un terminus, le sens "vers cet arret" est l'horaire d'arrivee des bus
       // qui y terminent : inutile pour un passager (on ne prend pas un bus vers
       // l'arret ou l'on est deja). On ne garde que les vrais departs.
-      if (normalize(sens.vers) === normalize(arretObj.nom)) return;
+      if (normalize(sens.vers) === normCanon) return;
       const prochains = arretObj.heures.filter((h) => timeToMin(h) >= minNow).slice(0, count);
       sensResults.push({ de: sens.de, vers: sens.vers, prochains });
     });
 
+    // Cas degenere (ligne a sens unique dont c'est le terminus) : pas de depart utile
     if (sensResults.length === 0) {
       return {
-        success: false,
-        error: `Arret "${arret}" introuvable sur la ligne ${ligne}`,
-        arrets: this.listStops({ ligne }).arrets,
+        success: true,
+        ligne: String(data.ligne),
+        arret: canonNom,
+        sens: [],
+        message: `Ligne ${data.ligne}, arret ${canonNom} : terminus, aucun depart a afficher.`,
       };
     }
 
