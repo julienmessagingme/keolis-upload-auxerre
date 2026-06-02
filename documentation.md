@@ -113,6 +113,51 @@ BUS_AGENT_TOKEN=<random hex 32 ; header x-api-key ou ?token=>
 
 Si `BUS_AGENT_TOKEN` est absent, l'endpoint `/api/bus/*` renvoie 401 systematiquement (ferme par defaut).
 
+## Agent horaires bus — parsing des fiches et ajout d'une ligne
+
+**Principe (build hors runtime).** Le runtime ne lit JAMAIS un PDF. Il charge au
+demarrage tous les `src/features/bus-agent/data/ligne-<n>.json` (auto-decouverte
+par regex `^ligne-.+\.json$`) et fait un lookup deterministe. Les JSON sont
+generes hors ligne par `scripts/parse-schedule.js`, qui lit la couche texte du
+PDF avec les coordonnees (x,y) de chaque horaire (`pdfjs-dist`, devDependency).
+Lire la grille "a la vision" (LLM type Gemini) a ete teste et **abandonne** :
+arrets inventes, colonnes perdues, lent. Les coordonnees sont exactes.
+
+**Procedure pour ajouter / mettre a jour UNE ligne :**
+
+1. **Recuperer le PDF.** Les fiches uploadees via l'app vivent sur Backblaze B2,
+   nommees `<lineName>.pdf` (ex. `Ligne-2.pdf`). URL publique :
+   `https://f003.backblazeb2.com/file/auxerre/<lineName>.pdf`. Telecharger en local.
+2. **Parser** (ecrit le JSON au bon endroit par defaut) :
+   ```bash
+   npm run parse:schedule -- <chemin.pdf> <numeroLigne>
+   # ex : npm run parse:schedule -- ./Ligne-2.pdf 2
+   # -> ecrit src/features/bus-agent/data/ligne-2.json
+   ```
+3. **LIRE le resume de controle** imprime sur stderr et le **recouper avec le PDF** :
+   - `[ALERTE]` eventuelles (PDF multi-pages, nb de sens != 2) = parsing probablement faux ;
+   - nb de sens = 2, `de -> vers` corrects pour chaque sens ;
+   - nb d'arrets coherent, nb de courses coherent, plage horaire (1re..derniere) plausible ;
+   - `valable_des` correct.
+   Verifier en plus 2-3 points precis : ouvrir le PDF, prendre un arret au milieu et
+   une heure, et comparer a la sortie de l'API en local.
+4. **Tester en local** : `npm run dev` puis
+   `curl "http://localhost:3000/api/bus/next?ligne=2&arret=<...>&heure=8:00&token=<BUS_AGENT_TOKEN>"`.
+5. **Commit + push** `git push origin main`. Le deploiement GHA reconstruit le
+   conteneur ; le service recharge automatiquement le nouveau `ligne-<n>.json`.
+
+**Limites connues du parser (calibre sur la Ligne 1)** — si une fiche a une mise
+en page differente, le JSON peut etre faux SANS erreur. A surveiller :
+- **Page 1 uniquement** (`getPage(1)`). Une fiche multi-pages (scolaire/vacances) perd des courses → l'`[ALERTE]` multi-pages le signale.
+- **Exactement 2 tableaux** supposes, separes par le plus grand ecart vertical (`splitTables`). Une ligne a sens unique ou a 3 sous-grilles sera mal decoupee.
+- **Colonne des noms a x < 190** (`NAME_X_MAX`). Layout different → noms mal extraits.
+- **Pastilles collees au nom** filtrees par `MARKER` (`/^(\d+|N|Flexi|bus)$/i`).
+
+Si une ligne ne passe pas la verif : ajuster les constantes en tete de
+`scripts/parse-schedule.js` (documentees inline) pour cette mise en page, ou en
+dernier recours saisir/corriger le JSON a la main. Ne JAMAIS committer un
+`ligne-<n>.json` non verifie contre le PDF.
+
 ## Schema DB SQLite
 
 Tables principales (`data/knowledge.db`) :

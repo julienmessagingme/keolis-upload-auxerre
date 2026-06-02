@@ -32,6 +32,7 @@ async function extractItems(buffer) {
     data: new Uint8Array(buffer),
     useSystemFonts: true,
   }).promise;
+  const numPages = doc.numPages;
   const page = await doc.getPage(1);
   const content = await page.getTextContent();
   const items = content.items
@@ -42,7 +43,7 @@ async function extractItems(buffer) {
     }))
     .filter((it) => it.s);
   const fullText = content.items.map((it) => it.str).join(' ');
-  return { items, fullText };
+  return { items, fullText, numPages };
 }
 
 function clusterRows(items) {
@@ -103,7 +104,7 @@ function tableToSens(rows) {
 }
 
 async function parseSchedule(buffer, ligne) {
-  const { items, fullText } = await extractItems(buffer);
+  const { items, fullText, numPages } = await extractItems(buffer);
   const dataRows = clusterRows(items)
     .map(parseRow)
     .filter((r) => r.nom && r.heures.length >= MIN_TIMES_PER_ROW);
@@ -124,10 +125,42 @@ async function parseSchedule(buffer, ligne) {
     valable_des: valableDes ? valableDes.trim() : null,
     genere_le: new Date().toISOString(),
     sens,
+    _numPages: numPages, // meta de controle (stripe avant ecriture du JSON)
   };
 }
 
-module.exports = { parseSchedule };
+/**
+ * Resume de controle (vers stderr) pour verifier une ligne d'un coup d'oeil :
+ * pages, validite, et par sens : de->vers, nb arrets, nb courses, plage horaire.
+ * Les ALERTES signalent les cas ou les hypotheses du parser peuvent etre fausses
+ * (PDF multi-pages, sens non egaux a 2). A recouper avec le PDF avant commit.
+ */
+function summarize(data) {
+  const toMin = (t) => {
+    const [h, m] = String(t).split(':').map(Number);
+    return h * 60 + m;
+  };
+  const fmt = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  const lines = [];
+  if (data._numPages > 1) {
+    lines.push(`  [ALERTE] PDF de ${data._numPages} pages : seule la page 1 est lue. Verifier qu'aucune grille n'est sur une autre page.`);
+  }
+  if (data.sens.length !== 2) {
+    lines.push(`  [ALERTE] ${data.sens.length} sens detecte(s) (attendu 2). Le decoupage des tableaux est probablement faux.`);
+  }
+  lines.push(`  valable_des: ${data.valable_des || '(non trouve)'}`);
+  data.sens.forEach((s, i) => {
+    const courses = Math.max(...s.arrets.map((a) => a.heures.length));
+    const firsts = s.arrets.map((a) => toMin(a.heures[0]));
+    const lasts = s.arrets.map((a) => toMin(a.heures[a.heures.length - 1]));
+    lines.push(
+      `  sens ${i + 1}: ${s.de} -> ${s.vers} | ${s.arrets.length} arrets | ${courses} courses | ${fmt(Math.min(...firsts))}..${fmt(Math.max(...lasts))}`
+    );
+  });
+  return lines.join('\n');
+}
+
+module.exports = { parseSchedule, summarize };
 
 // --- CLI ---
 if (require.main === module) {
@@ -142,12 +175,12 @@ if (require.main === module) {
     outArg || path.join(__dirname, '..', 'src', 'features', 'bus-agent', 'data', `ligne-${ligne}.json`);
   parseSchedule(fs.readFileSync(pdfPath), ligne)
     .then((data) => {
+      const summary = summarize(data);
+      // on ne persiste pas les cles meta (prefixe _)
+      const clean = Object.fromEntries(Object.entries(data).filter(([k]) => !k.startsWith('_')));
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
-      fs.writeFileSync(outPath, JSON.stringify(data, null, 2) + '\n');
-      console.error(
-        `Ecrit ${outPath} : ${data.sens.length} sens, ` +
-          data.sens.map((s) => `${s.de}->${s.vers} (${s.arrets.length} arrets)`).join(' | ')
-      );
+      fs.writeFileSync(outPath, JSON.stringify(clean, null, 2) + '\n');
+      console.error(`Ecrit ${outPath}\n${summary}\n  --> RELIRE ces chiffres contre le PDF avant de committer.`);
     })
     .catch((err) => {
       console.error('Echec parsing:', err.message);
