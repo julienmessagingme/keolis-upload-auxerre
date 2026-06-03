@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "parse:schedule": "node scripts/parse-schedule.js"
+    "parse:schedule": "node scripts/parse-schedule.js",
+    "build:schedules": "node scripts/build-schedules.js"
   },
   "keywords": [
     "backblaze",

@@ -6,7 +6,7 @@
 
 ## Historique récent (livré)
 
-### 2026-06-02 : Agent horaires bus (LIVRE)
+### 2026-06-03 : Agent horaires bus, 11 grilles (LIVRE)
 
 Endpoint HTTP appele par un flow WhatsApp existant (SmartLink) pour repondre
 "prochains passages" a partir d'un arret + une heure, dans les DEUX sens.
@@ -16,21 +16,32 @@ Decision cle : Gemini 2.5 Pro teste pour lire la grille PDF, juge inexploitable
 fiche horaire a une couche texte propre : on l'extrait hors runtime avec les
 coordonnees (x,y) via pdfjs-dist (devDependency), ce qui est exact et instantane.
 
-- `scripts/parse-schedule.js` : outil de BUILD (pdfjs coords). Genere un JSON
-  verifie. `npm run parse:schedule <pdf> <ligne>`.
-- `src/features/bus-agent/data/ligne-1.json` : grille committee (2 sens, 30 arrets
-  chacun, ~55 courses/sens). Le runtime ne lit jamais le PDF.
-- `bus.service.js` : lookup deterministe, comparaison en MINUTES depuis minuit
-  (pas en chaine), renvoie les 2 sens + un `message` pret a envoyer. Resolution du
-  nom d'arret en 3 etapes : exact (accents/casse ignores) -> sous-chaine (>=3 car.)
-  -> flou (distance d'edition en sous-chaine approximative, >=4 car., seuil ~1 faute
-  / 3 car.). Tolere les fautes de frappe car tous les flows WhatsApp ne passent pas
-  forcement par un selecteur.
-- `GET /api/bus/next?ligne=1&arret=...&heure=HH:MM&n=3` et
-  `GET /api/bus/stops?ligne=1`. Auth par jeton `BUS_AGENT_TOKEN` (header
+**Modele GRILLE.** Une grille = un tableau horaire precis (ligne 3 semaine et
+ligne 3 samedi = 2 grilles). Le flow WhatsApp choisit la grille selon le jour et
+l'envoie dans le param HTTP `grille` ; pas de calendrier de jours feries cote
+serveur (`ligne` reste un alias accepte). 11 grilles committees :
+`1, 1-samedi, 2, 3, 3-samedi, 4, 4-samedi, 5, dim1, dim2, navette`.
+
+- `scripts/build-schedules.js` : driver de BUILD reproductible. MANIFEST des 11
+  grilles (PDF B2, libelle, options) ; telecharge, parse, compose, ecrit les
+  `ligne-<grille>.json`. `npm run build:schedules` (`--dry` pour verifier sans
+  ecrire, `--only <grille>` pour une seule). `scripts/parse-schedule.js` reste
+  l'outil unitaire (debug d'une fiche). Mode `single`/`--boucle` pour les lignes
+  en boucle (La Navette : 1 seul sens, depart = arrivee), `renames` pour les noms
+  abimes a l'extraction (DIM1 : "ème R.I." -> "4ème R.I.").
+- `bus.service.js` : lookup deterministe par `grille`, comparaison en MINUTES
+  depuis minuit (pas en chaine), renvoie les sens + un `message` pret a envoyer.
+  Resolution du nom d'arret en 3 etapes : exact (accents/casse ignores) ->
+  sous-chaine (>=3 car.) -> flou (distance d'edition en sous-chaine approximative,
+  >=4 car., seuil ~1 faute / 3 car.). Tolere les fautes de frappe car tous les
+  flows WhatsApp ne passent pas forcement par un selecteur. Boucle : 1 sens, pas
+  de filtre faux-terminus, message "Passages :" sans "Vers".
+- `GET /api/bus/next?grille=3-samedi&arret=...&heure=HH:MM&n=3` et
+  `GET /api/bus/stops?grille=1`. Auth par jeton `BUS_AGENT_TOKEN` (header
   `x-api-key` ou `?token=`, compare en temps constant), rate-limit 60 req/min.
 
-Pour ajouter une ligne : `npm run parse:schedule <pdf> <n>` puis commit du JSON.
+Pour regenerer : `npm run build:schedules`. Pour ajouter une grille : entree au
+MANIFEST + rebuild. Toujours recouper le resume de controle avec le PDF.
 
 ### 2026-05-21 — Mode viz camembert (LIVRE)
 

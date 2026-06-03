@@ -6,10 +6,16 @@ const path = require('path');
  *
  * Les grilles sont des JSON verifies generes hors runtime par
  * scripts/parse-schedule.js (couche texte du PDF + coordonnees). Le runtime ne
- * lit jamais un PDF : il charge les ligne-<n>.json au demarrage et compare les
- * heures en MINUTES depuis minuit (jamais en chaine : "6:40" > "14:00" en
+ * lit jamais un PDF : il charge les ligne-<grille>.json au demarrage et compare
+ * les heures en MINUTES depuis minuit (jamais en chaine : "6:40" > "14:00" en
  * lexicographique). On renvoie toujours les DEUX sens (le flow WhatsApp ne sait
  * pas dans quel sens va l'usager).
+ *
+ * GRILLE vs LIGNE. Une "grille" est un tableau horaire precis (ex. la ligne 3
+ * en semaine, ou la ligne 3 le samedi : deux grilles distinctes). Le flow
+ * WhatsApp choisit la bonne grille selon le jour et envoie son identifiant dans
+ * le parametre `grille` (ex. "3", "3-samedi", "dim1", "navette"). C'est cet id
+ * qui sert de cle de lookup ; `ligne` reste un alias accepte pour compat.
  */
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -66,10 +72,19 @@ function loadLignes() {
   for (const file of files) {
     try {
       const data = JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf8'));
-      // index normalise des arrets par sens, pour un lookup O(1)
+      // Cle de lookup = grille si presente, sinon ligne (compat anciens JSON)
+      data._key = String(data.grille != null ? data.grille : data.ligne);
+      // Libelle affiche a l'usager (ex. "Ligne 3 (samedi)", "La Navette")
+      data._libelle = data.libelle || `Ligne ${data.ligne != null ? data.ligne : data._key}`;
+      // index normalise des arrets par sens, pour un lookup O(1). Sur une ligne
+      // en boucle un arret peut apparaitre plusieurs fois : on garde la 1re
+      // occurrence (l'ordre du parcours, donc les premiers passages).
       data._index = data.sens.map((sens) => {
         const byStop = new Map();
-        for (const arret of sens.arrets) byStop.set(normalize(arret.nom), arret);
+        for (const arret of sens.arrets) {
+          const key = normalize(arret.nom);
+          if (!byStop.has(key)) byStop.set(key, arret);
+        }
         return byStop;
       });
       // union des arrets (sans doublon) avec leur forme normalisee, pour la
@@ -85,7 +100,7 @@ function loadLignes() {
           }
         }
       }
-      map.set(String(data.ligne), data);
+      map.set(data._key, data);
     } catch (err) {
       console.error('[bus] Grille illisible:', file, err.message);
     }
@@ -95,8 +110,9 @@ function loadLignes() {
 
 const LIGNES = loadLignes();
 
-function getLigne(ligne) {
-  return LIGNES.get(String(ligne).trim());
+/** Resout une grille par son identifiant (`grille` ou alias `ligne`). */
+function getGrille(grille) {
+  return LIGNES.get(String(grille).trim());
 }
 
 /**
@@ -154,29 +170,29 @@ function resolveStopName(allStops, normQuery) {
 }
 
 class BusService {
-  /** Liste des lignes chargees (pour diagnostic / flow). */
+  /** Liste des grilles chargees (pour diagnostic / flow). */
   listLignes() {
     return [...LIGNES.keys()].sort();
   }
 
   /**
-   * Arrets d'une ligne (union des deux sens, sans doublon, ordre du sens 0
-   * puis ajouts du sens 1). Sert au selecteur du flow WhatsApp.
+   * Arrets d'une grille (union des sens, sans doublon, ordre du parcours).
+   * Sert au selecteur du flow WhatsApp.
    */
-  listStops({ ligne }) {
-    const data = getLigne(ligne);
-    if (!data) return { success: false, error: `Ligne ${ligne} inconnue`, lignes: this.listLignes() };
-    return { success: true, ligne: String(data.ligne), arrets: data._allStops.map((s) => s.nom) };
+  listStops({ grille }) {
+    const data = getGrille(grille);
+    if (!data) return { success: false, error: `Grille ${grille} inconnue`, grilles: this.listLignes() };
+    return { success: true, grille: data._key, ligne: data._libelle, arrets: data._allStops.map((s) => s.nom) };
   }
 
   /**
    * Prochains passages a un arret, pour les DEUX sens, a partir d'une heure.
    * @returns objet structure + un champ `message` pret a renvoyer au flow.
    */
-  nextDepartures({ ligne, arret, heure, n }) {
-    const data = getLigne(ligne);
+  nextDepartures({ grille, arret, heure, n }) {
+    const data = getGrille(grille);
     if (!data) {
-      return { success: false, error: `Ligne ${ligne} inconnue`, lignes: this.listLignes() };
+      return { success: false, error: `Grille ${grille} inconnue`, grilles: this.listLignes() };
     }
     if (!arret || !String(arret).trim()) {
       return { success: false, error: 'arret requis' };
@@ -192,7 +208,7 @@ class BusService {
     if (!canonNom) {
       return {
         success: false,
-        error: `Arret "${arret}" introuvable sur la ligne ${ligne}`,
+        error: `Arret "${arret}" introuvable sur ${data._libelle}`,
         arrets: data._allStops.map((s) => s.nom),
       };
     }
@@ -204,41 +220,46 @@ class BusService {
       if (!arretObj) return; // ce sens ne dessert pas cet arret
       // A un terminus, le sens "vers cet arret" est l'horaire d'arrivee des bus
       // qui y terminent : inutile pour un passager (on ne prend pas un bus vers
-      // l'arret ou l'on est deja). On ne garde que les vrais departs.
-      if (normalize(sens.vers) === normCanon) return;
+      // l'arret ou l'on est deja). On ne garde que les vrais departs. Exception :
+      // une ligne en boucle (depart = arrivee) n'a pas de "faux terminus".
+      if (!sens.boucle && normalize(sens.vers) === normCanon) return;
       const prochains = arretObj.heures.filter((h) => timeToMin(h) >= minNow).slice(0, count);
-      sensResults.push({ de: sens.de, vers: sens.vers, prochains });
+      sensResults.push({ de: sens.de, vers: sens.vers, boucle: !!sens.boucle, prochains });
     });
 
     // Cas degenere (ligne a sens unique dont c'est le terminus) : pas de depart utile
     if (sensResults.length === 0) {
       return {
         success: true,
-        ligne: String(data.ligne),
+        grille: data._key,
+        ligne: data._libelle,
         arret: canonNom,
         sens: [],
-        message: `Ligne ${data.ligne}, arret ${canonNom} : terminus, aucun depart a afficher.`,
+        message: `${data._libelle}, arret ${canonNom} : terminus, aucun depart a afficher.`,
       };
     }
 
     return {
       success: true,
-      ligne: String(data.ligne),
+      grille: data._key,
+      ligne: data._libelle,
       arret: canonNom,
       heure: `${String(Math.floor(minNow / 60)).padStart(2, '0')}:${String(minNow % 60).padStart(2, '0')}`,
       sens: sensResults,
-      message: this._formatMessage(data.ligne, canonNom, minNow, sensResults),
+      message: this._formatMessage(data._libelle, canonNom, minNow, sensResults),
     };
   }
 
-  _formatMessage(ligne, arret, minNow, sensResults) {
+  _formatMessage(libelle, arret, minNow, sensResults) {
     const hh = `${String(Math.floor(minNow / 60)).padStart(2, '0')}:${String(minNow % 60).padStart(2, '0')}`;
-    const lines = [`Ligne ${ligne}, arret ${arret}, prochains passages a partir de ${hh} :`];
+    const lines = [`${libelle}, arret ${arret}, prochains passages a partir de ${hh} :`];
     for (const s of sensResults) {
+      // Ligne en boucle : un seul sens, pas de "Vers X" (depart = arrivee).
+      const prefix = s.boucle ? 'Passages' : `Vers ${s.vers}`;
       if (s.prochains.length > 0) {
-        lines.push(`Vers ${s.vers} : ${s.prochains.map(padTime).join(', ')}`);
+        lines.push(`${prefix} : ${s.prochains.map(padTime).join(', ')}`);
       } else {
-        lines.push(`Vers ${s.vers} : plus de passage aujourd'hui`);
+        lines.push(`${prefix} : plus de passage aujourd'hui`);
       }
     }
     return lines.join('\n');

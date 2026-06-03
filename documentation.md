@@ -113,50 +113,85 @@ BUS_AGENT_TOKEN=<random hex 32 ; header x-api-key ou ?token=>
 
 Si `BUS_AGENT_TOKEN` est absent, l'endpoint `/api/bus/*` renvoie 401 systematiquement (ferme par defaut).
 
-## Agent horaires bus — parsing des fiches et ajout d'une ligne
+## Agent horaires bus : parsing des fiches et ajout d'une grille
 
 **Principe (build hors runtime).** Le runtime ne lit JAMAIS un PDF. Il charge au
-demarrage tous les `src/features/bus-agent/data/ligne-<n>.json` (auto-decouverte
-par regex `^ligne-.+\.json$`) et fait un lookup deterministe. Les JSON sont
-generes hors ligne par `scripts/parse-schedule.js`, qui lit la couche texte du
-PDF avec les coordonnees (x,y) de chaque horaire (`pdfjs-dist`, devDependency).
-Lire la grille "a la vision" (LLM type Gemini) a ete teste et **abandonne** :
-arrets inventes, colonnes perdues, lent. Les coordonnees sont exactes.
+demarrage tous les `src/features/bus-agent/data/ligne-<grille>.json`
+(auto-decouverte par regex `^ligne-.+\.json$`) et fait un lookup deterministe.
+Les JSON sont generes hors ligne par `scripts/parse-schedule.js`, qui lit la
+couche texte du PDF avec les coordonnees (x,y) de chaque horaire (`pdfjs-dist`,
+devDependency). Lire la grille "a la vision" (LLM type Gemini) a ete teste et
+**abandonne** : arrets inventes, colonnes perdues, lent. Les coordonnees sont exactes.
 
-**Procedure pour ajouter / mettre a jour UNE ligne :**
+**Notion de GRILLE.** Une "grille" est un tableau horaire precis, pas une ligne :
+la ligne 3 en semaine et la ligne 3 le samedi sont deux grilles distinctes. Le
+flow WhatsApp choisit la grille selon le jour (semaine / samedi-vacances /
+dimanche) et envoie son identifiant dans le parametre HTTP `grille`. Cote
+serveur il n'y a donc AUCUN calendrier de jours feries : c'est le flow qui
+decide. Chaque grille a son fichier `ligne-<grille>.json` (cle de lookup =
+`grille`), son `libelle` affiche, et ses options de parsing.
 
-1. **Recuperer le PDF.** Les fiches uploadees via l'app vivent sur Backblaze B2,
-   nommees `<lineName>.pdf` (ex. `Ligne-2.pdf`). URL publique :
-   `https://f003.backblazeb2.com/file/auxerre/<lineName>.pdf`. Telecharger en local.
-2. **Parser** (ecrit le JSON au bon endroit par defaut) :
-   ```bash
-   npm run parse:schedule -- <chemin.pdf> <numeroLigne>
-   # ex : npm run parse:schedule -- ./Ligne-2.pdf 2
-   # -> ecrit src/features/bus-agent/data/ligne-2.json
-   ```
-3. **LIRE le resume de controle** imprime sur stderr et le **recouper avec le PDF** :
-   - `[ALERTE]` eventuelles (PDF multi-pages, nb de sens != 2) = parsing probablement faux ;
-   - nb de sens = 2, `de -> vers` corrects pour chaque sens ;
-   - nb d'arrets coherent, nb de courses coherent, plage horaire (1re..derniere) plausible ;
-   - `valable_des` correct.
-   Verifier en plus 2-3 points precis : ouvrir le PDF, prendre un arret au milieu et
-   une heure, et comparer a la sortie de l'API en local.
-4. **Tester en local** : `npm run dev` puis
-   `curl "http://localhost:3000/api/bus/next?ligne=2&arret=<...>&heure=8:00&token=<BUS_AGENT_TOKEN>"`.
-5. **Commit + push** `git push origin main`. Le deploiement GHA reconstruit le
-   conteneur ; le service recharge automatiquement le nouveau `ligne-<n>.json`.
+**Inventaire des grilles (manifest dans `scripts/build-schedules.js`) :**
 
-**Limites connues du parser (calibre sur la Ligne 1)** — si une fiche a une mise
-en page differente, le JSON peut etre faux SANS erreur. A surveiller :
-- **Page 1 uniquement** (`getPage(1)`). Une fiche multi-pages (scolaire/vacances) perd des courses → l'`[ALERTE]` multi-pages le signale.
-- **Exactement 2 tableaux** supposes, separes par le plus grand ecart vertical (`splitTables`). Une ligne a sens unique ou a 3 sous-grilles sera mal decoupee.
-- **Colonne des noms a x < 190** (`NAME_X_MAX`). Layout different → noms mal extraits.
-- **Pastilles collees au nom** filtrees par `MARKER` (`/^(\d+|N|Flexi|bus)$/i`).
+| `grille`   | PDF B2                                    | libelle affiche                          | service          |
+|------------|-------------------------------------------|------------------------------------------|------------------|
+| `1`        | `Ligne+1.pdf`                             | Ligne 1                                  | semaine          |
+| `1-samedi` | `Ligne+1+samedi+et+grandes+vacances.pdf`  | Ligne 1 (samedi et grandes vacances)     | samedi-vacances  |
+| `2`        | `Ligne+2.pdf`                             | Ligne 2                                  | semaine          |
+| `3`        | `Ligne+3.pdf`                             | Ligne 3                                  | semaine          |
+| `3-samedi` | `Ligne+3+samedi+et+grandes+vacances.pdf`  | Ligne 3 (samedi et grandes vacances)     | samedi-vacances  |
+| `4`        | `Ligne+4.pdf`                             | Ligne 4                                  | semaine          |
+| `4-samedi` | `Ligne+4+samedi+et+grandes+vacances.pdf`  | Ligne 4 (samedi et grandes vacances)     | samedi-vacances  |
+| `5`        | `Ligne+5.pdf`                             | Ligne 5                                  | semaine          |
+| `dim1`     | `Ligne+DIM1.pdf`                          | Ligne DIM1 (dimanche et jours feries)    | dimanche         |
+| `dim2`     | `Ligne+DIM2.pdf`                          | Ligne DIM2 (dimanche et jours feries)    | dimanche         |
+| `navette`  | `La+Navette.pdf`                          | La Navette (centre-ville)                | tous-les-jours   |
 
-Si une ligne ne passe pas la verif : ajuster les constantes en tete de
-`scripts/parse-schedule.js` (documentees inline) pour cette mise en page, ou en
-dernier recours saisir/corriger le JSON a la main. Ne JAMAIS committer un
-`ligne-<n>.json` non verifie contre le PDF.
+(Les lignes 2 et 5 n'ont pas de variante samedi/dimanche sur B2.)
+
+**Regenerer TOUTES les grilles** (cas normal, source de verite = le manifest) :
+
+```bash
+npm run build:schedules -- --dry   # parse + resume, n'ecrit rien (verification)
+npm run build:schedules            # ecrit les 11 ligne-<grille>.json
+npm run build:schedules -- --only 3-samedi   # une seule grille
+```
+
+Le driver telecharge chaque PDF depuis B2, parse, compose
+`{ grille, ligne, libelle, service, valable_des, fonctionnement, genere_le, sens }`
+et imprime un resume de controle par grille. Pour ajouter une grille : ajouter
+une entree au `MANIFEST` (avec `single: true` si boucle, `renames` si noms
+abimes), relancer le build.
+
+**Debug d'UNE fiche isolee** (hors manifest) : `scripts/parse-schedule.js` reste
+l'outil unitaire.
+```bash
+npm run parse:schedule -- <chemin.pdf> <id> [sortie.json] [--boucle]
+```
+
+**Verification OBLIGATOIRE avant commit** (le parsing peut etre faux sans erreur) :
+- `[ALERTE]` eventuelles (PDF multi-pages, nb de sens != 2 hors boucle) = parsing probablement faux ;
+- pour chaque grille : `de -> vers` corrects, nb d'arrets / nb de courses coherents, plage horaire plausible ;
+- recouper 2-3 points precis (un arret au milieu + une heure) avec le PDF et la sortie locale.
+
+**Tester en local** : `npm run dev` puis
+`curl "http://localhost:3000/api/bus/next?grille=3-samedi&arret=<...>&heure=8:00&token=<BUS_AGENT_TOKEN>"`
+(ou requerir directement `bus.service.js` en node : `nextDepartures({ grille, arret, heure, n })`).
+
+**Commit + push** `git push origin main`. Le deploiement GHA reconstruit le
+conteneur ; le service recharge automatiquement les `ligne-<grille>.json`.
+
+**Limites connues du parser** (si une fiche a une mise en page differente, le
+JSON peut etre faux SANS erreur) :
+- **Page 1 uniquement** (`getPage(1)`). Une fiche multi-pages (scolaire/vacances) perd des courses ; l'`[ALERTE]` multi-pages le signale.
+- **2 tableaux** supposes (separes par le plus grand ecart vertical, `splitTables`), SAUF si `single: true` (boucle : 1 seul sens, ex. La Navette).
+- **Colonne des noms a x < 190** (`NAME_X_MAX`). Layout different = noms mal extraits.
+- **Pastilles collees au nom** filtrees par `MARKER` (`/^(\d+|N|Flexi|bus)$/i`) ; un nom abime se rattrape via `renames` (match EXACT, accents inclus, ex. DIM1 : `"ème R.I." -> "4ème R.I."`).
+
+Si une grille ne passe pas la verif : ajuster les options du manifest ou les
+constantes en tete de `scripts/parse-schedule.js` (documentees inline), ou en
+dernier recours corriger le JSON a la main. Ne JAMAIS committer un
+`ligne-<grille>.json` non verifie contre le PDF.
 
 ## Schema DB SQLite
 

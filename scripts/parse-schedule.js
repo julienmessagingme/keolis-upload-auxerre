@@ -93,40 +93,69 @@ function splitTables(dataRows) {
   return [sorted.slice(0, gapIdx + 1), sorted.slice(gapIdx + 1)];
 }
 
-function tableToSens(rows) {
+function tableToSens(rows, boucle = false) {
   // rows deja triees par y decroissant = ordre du parcours (haut vers bas)
   const arrets = rows.map((r) => ({ nom: r.nom, heures: r.heures }));
-  return {
+  const sens = {
     de: arrets[0].nom,
     vers: arrets[arrets.length - 1].nom,
     arrets,
   };
+  if (boucle) sens.boucle = true; // ligne en boucle (1 seul sens, depart = arrivee)
+  return sens;
 }
 
-async function parseSchedule(buffer, ligne) {
+/**
+ * Parse la couche texte d'un PDF d'horaire en grille structuree.
+ *
+ * options :
+ *   - single  : true pour une ligne en BOUCLE (1 seul sens, pas de decoupage en
+ *               2 tableaux ; ex. La Navette centre-ville).
+ *   - renames : { "Nom extrait": "Nom corrige" } pour rattraper une extraction
+ *               de nom abimee (pastille collee, annotation qui a fui).
+ *
+ * Retourne le parse brut (valable_des, fonctionnement, genere_le, sens,
+ * _numPages). L'appelant (CLI ou build-schedules) ajoute les metas d'adressage
+ * (grille, ligne, libelle, service).
+ */
+async function parseSchedule(buffer, options = {}) {
+  const opts = typeof options === 'string' ? { ligne: options } : options;
+  const { single = false, renames = null } = opts;
+
   const { items, fullText, numPages } = await extractItems(buffer);
-  const dataRows = clusterRows(items)
+  let dataRows = clusterRows(items)
     .map(parseRow)
     .filter((r) => r.nom && r.heures.length >= MIN_TIMES_PER_ROW);
+
+  if (renames) {
+    dataRows = dataRows.map((r) => (renames[r.nom] ? { ...r, nom: renames[r.nom] } : r));
+  }
 
   if (dataRows.length < 4) {
     throw new Error(`Parsing suspect : seulement ${dataRows.length} lignes d'arret trouvees`);
   }
 
-  const [tableA, tableB] = splitTables(dataRows);
-  const sens = [tableToSens(tableA), tableToSens(tableB)];
+  let sens;
+  if (single) {
+    const sorted = [...dataRows].sort((a, b) => b.y - a.y); // ordre du parcours
+    sens = [tableToSens(sorted, true)];
+  } else {
+    const [tableA, tableB] = splitTables(dataRows);
+    sens = [tableToSens(tableA), tableToSens(tableB)];
+  }
 
   const fonctionnement = (fullText.match(/FONCTIONNE[^.]*?(?:vacances|scolaire)/i) || [])[0] || null;
   const valableDes = (fullText.match(/VALABLES?\s+D[EÈ]S\s+LE\s+([0-9].*?\d{4})/i) || [])[1] || null;
 
-  return {
-    ligne: String(ligne),
+  const out = {
     fonctionnement: fonctionnement ? fonctionnement.replace(/\s+/g, ' ').trim() : null,
     valable_des: valableDes ? valableDes.trim() : null,
     genere_le: new Date().toISOString(),
     sens,
     _numPages: numPages, // meta de controle (stripe avant ecriture du JSON)
   };
+  if (opts.ligne != null) out.ligne = String(opts.ligne);
+  return out;
 }
 
 /**
@@ -145,8 +174,9 @@ function summarize(data) {
   if (data._numPages > 1) {
     lines.push(`  [ALERTE] PDF de ${data._numPages} pages : seule la page 1 est lue. Verifier qu'aucune grille n'est sur une autre page.`);
   }
-  if (data.sens.length !== 2) {
-    lines.push(`  [ALERTE] ${data.sens.length} sens detecte(s) (attendu 2). Le decoupage des tableaux est probablement faux.`);
+  const boucle = data.sens.length === 1 && data.sens[0].boucle;
+  if (!(data.sens.length === 2 || boucle)) {
+    lines.push(`  [ALERTE] ${data.sens.length} sens detecte(s) (attendu 2, ou 1 si boucle). Le decoupage des tableaux est probablement faux.`);
   }
   lines.push(`  valable_des: ${data.valable_des || '(non trouve)'}`);
   data.sens.forEach((s, i) => {
@@ -166,14 +196,17 @@ module.exports = { parseSchedule, summarize };
 if (require.main === module) {
   const fs = require('fs');
   const path = require('path');
-  const [pdfPath, ligne, outArg] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const single = args.includes('--boucle') || args.includes('--single');
+  const pos = args.filter((a) => !a.startsWith('--'));
+  const [pdfPath, ligne, outArg] = pos;
   if (!pdfPath || !ligne) {
-    console.error('Usage: node scripts/parse-schedule.js <chemin.pdf> <numeroLigne> [fichier-sortie.json]');
+    console.error('Usage: node scripts/parse-schedule.js <chemin.pdf> <id> [fichier-sortie.json] [--boucle]');
     process.exit(1);
   }
   const outPath =
     outArg || path.join(__dirname, '..', 'src', 'features', 'bus-agent', 'data', `ligne-${ligne}.json`);
-  parseSchedule(fs.readFileSync(pdfPath), ligne)
+  parseSchedule(fs.readFileSync(pdfPath), { ligne, single })
     .then((data) => {
       const summary = summarize(data);
       // on ne persiste pas les cles meta (prefixe _)

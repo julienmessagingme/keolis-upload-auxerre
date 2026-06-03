@@ -1,8 +1,11 @@
 {
+  "grille": "1",
   "ligne": "1",
+  "libelle": "Ligne 1",
+  "service": "semaine",
+  "valable_des": "1 er   SEPTEMBRE 2025",
   "fonctionnement": "FONCTIONNE DU LUNDI AU VENDREDI en période scolaire",
-  "valable_des": "6 JANVIER 2025",
-  "genere_le": "2026-06-02T04:39:17.144Z",
+  "genere_le": "2026-06-03T08:49:00.141Z",
   "sens": [
     {
       "de": "Les Clairions",

@@ -16,13 +16,14 @@ function checkToken(req) {
 }
 
 class BusController {
-  /** GET /api/bus/stops?ligne=1 */
+  /** GET /api/bus/stops?grille=1 (alias ?ligne=1) */
   stops(req, res) {
     if (!checkToken(req)) {
       return res.status(401).json({ success: false, error: 'Non autorise' });
     }
     try {
-      const result = busService.listStops({ ligne: req.query.ligne || '1' });
+      const grille = req.query.grille || req.query.ligne || '1';
+      const result = busService.listStops({ grille });
       return res.status(result.success ? 200 : 404).json(result);
     } catch (error) {
       console.error('Erreur bus/stops:', error);
@@ -30,14 +31,15 @@ class BusController {
     }
   }
 
-  /** GET /api/bus/next?ligne=1&arret=Gare%20SNCF&heure=14:30&n=3 */
+  /** GET /api/bus/next?grille=1&arret=Gare%20SNCF&heure=14:30&n=3 (alias ?ligne=) */
   next(req, res) {
     if (!checkToken(req)) {
       return res.status(401).json({ success: false, error: 'Non autorise' });
     }
     try {
-      const { ligne = '1', arret, heure, n } = req.query;
-      const result = busService.nextDepartures({ ligne, arret, heure, n });
+      const { arret, heure, n } = req.query;
+      const grille = req.query.grille || req.query.ligne || '1';
+      const result = busService.nextDepartures({ grille, arret, heure, n });
       return res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
       console.error('Erreur bus/next:', error);
