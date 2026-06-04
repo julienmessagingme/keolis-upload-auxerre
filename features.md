@@ -34,7 +34,11 @@ Page `/stats.html`. Volumetrie journaliere de chaque custom event MessagingMe Au
 Page `/dashboards.html` (sous-onglet de Stats). Chaque utilisateur cree ses propres funnels prives en glissant des events MessagingMe depuis une palette vers des etapes ordonnees. Chaque etape peut cumuler plusieurs events (volumes sommes). Reorder en drag, label editable. 3 modes de visualisation : **Entonnoir** (SVG funnel avec drop-off %), **Histogramme** (bar chart) et **Camembert** (doughnut base 100 — tranches = étapes, % de chaque étape sur le total). Replacement atomique des steps en DB via RPC PL/pgSQL (transaction Postgres, rollback automatique si crash au milieu). Persiste sur Supabase (memes tables qu'EDH, scope `auxerre`).
 
 ### Agent horaires bus
-Pas de page web : une API appelee par un flow WhatsApp (SmartLink). Le client choisit une ligne, un arret et une heure dans le flow ; l'API repond les prochains passages dans les DEUX sens (vers chaque terminus), sous forme d'un message pret a afficher. Donnees issues de la fiche horaire officielle, extraites avec exactitude (couche texte du PDF), jamais devinees. Ajout d'une ligne = relancer le parseur sur son PDF et committer le JSON.
+Pas de page web : une API appelee par un flow WhatsApp (SmartLink). Le client choisit un arret et une heure dans le flow ; l'API repond les prochains passages dans les DEUX sens (vers chaque terminus), sous forme d'un message pret a afficher. Tolere les fautes de frappe sur le nom d'arret.
+
+Couvre **11 grilles** : les 5 lignes en semaine, les variantes samedi/grandes vacances des lignes 1, 3 et 4, les services du dimanche (DIM1 et DIM2), et La Navette du centre-ville (ligne en boucle, repond "Passages" sans notion de sens). C'est le flow WhatsApp qui choisit la bonne grille selon le jour et l'envoie a l'API (pas de calendrier de jours feries cote serveur).
+
+Donnees issues des fiches horaires officielles, extraites avec exactitude (couche texte du PDF), jamais devinees. Mise a jour quand une fiche change : relancer la generation (`npm run build:schedules`) et committer les JSON.
 
 ## En cours de developpement
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — Keolis Auxerre
 
-Application web interne Keolis Auxerre : fiches horaires, actualites, base de connaissances chatbot, enquetes qualite. Bientot un module **Stats + Mes tableaux** sur les custom events MessagingMe (cf. [wip.md](wip.md)).
+Application web interne Keolis Auxerre : fiches horaires, actualites, base de connaissances chatbot, enquetes qualite, **stats + mes tableaux** (custom events MessagingMe), et un **agent horaires bus** interroge par un flow WhatsApp (cf. [features.md](features.md)).
 
 Deploye sur VPS OVH dans Docker derriere NPM, sous-domaine `keolisauxerre.messagingme.app`.
 
