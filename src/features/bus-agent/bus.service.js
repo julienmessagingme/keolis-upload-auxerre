@@ -235,7 +235,7 @@ class BusService {
         ligne: data._libelle,
         arret: canonNom,
         sens: [],
-        message: `${data._libelle}, arret ${canonNom} : terminus, aucun depart a afficher.`,
+        message: `🚍 ${data._libelle} · ${canonNom}\n🏁 Terminus, aucun départ à afficher.`,
       };
     }
 
@@ -252,17 +252,16 @@ class BusService {
 
   _formatMessage(libelle, arret, minNow, sensResults) {
     const hh = `${String(Math.floor(minNow / 60)).padStart(2, '0')}:${String(minNow % 60).padStart(2, '0')}`;
-    const lines = [`${libelle}, arret ${arret}, prochains passages a partir de ${hh} :`];
-    for (const s of sensResults) {
+    const head = `🚍 ${libelle} · ${arret}\n🗓️ à partir de ${hh}`;
+    const blocs = sensResults.map((s) => {
       // Ligne en boucle : un seul sens, pas de "Vers X" (depart = arrivee).
-      const prefix = s.boucle ? 'Passages' : `Vers ${s.vers}`;
-      if (s.prochains.length > 0) {
-        lines.push(`${prefix} : ${s.prochains.map(padTime).join(', ')}`);
-      } else {
-        lines.push(`${prefix} : plus de passage aujourd'hui`);
-      }
-    }
-    return lines.join('\n');
+      const titre = s.boucle ? '🔄 Passages' : `➡️ Vers ${s.vers}`;
+      const horaires = s.prochains.length > 0
+        ? `🕐 ${s.prochains.map(padTime).join(', ')}`
+        : "🌙 plus de passage aujourd'hui";
+      return `${titre}\n${horaires}`;
+    });
+    return [head, ...blocs].join('\n\n') + '\n\nℹ️ horaires théoriques';
   }
 }
 
