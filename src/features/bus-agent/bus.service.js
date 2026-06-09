@@ -235,7 +235,7 @@ class BusService {
         ligne: data._libelle,
         arret: canonNom,
         sens: [],
-        message: `🚍 ${data._libelle} · ${canonNom}\n🏁 Terminus, aucun départ à afficher.`,
+        message: `🚍 ${data._libelle} · 📍 ${canonNom}\n🏁 Terminus, aucun départ à afficher.`,
       };
     }
 
@@ -252,7 +252,7 @@ class BusService {
 
   _formatMessage(libelle, arret, minNow, sensResults) {
     const hh = `${String(Math.floor(minNow / 60)).padStart(2, '0')}:${String(minNow % 60).padStart(2, '0')}`;
-    const head = `🚍 ${libelle} · ${arret}\n🗓️ à partir de ${hh}`;
+    const head = `🚍 ${libelle} · 📍 ${arret}\n🗓️ à partir de ${hh}`;
     const blocs = sensResults.map((s) => {
       // Ligne en boucle : un seul sens, pas de "Vers X" (depart = arrivee).
       const titre = s.boucle ? '🔄 Passages' : `➡️ Vers ${s.vers}`;
